@@ -41,10 +41,11 @@ class DbCopyCli implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
 
-        Driver sourceDriver = GraphDatabase.driver(sourceAddress, AuthTokens.basic(sourceUserName, sourcePassword));
-        sourceDriver.verifyConnectivity();
-        Driver targetDriver = GraphDatabase.driver(targetAddress, AuthTokens.basic(targetUserName, targetPassword));
-        new DataCopy(sourceDriver, sourceDatabase, targetDriver, targetDatabase).copyAllNodesAndRels();
+        try (Driver sourceDriver = GraphDatabase.driver(sourceAddress, AuthTokens.basic(sourceUserName, sourcePassword));
+             Driver targetDriver = GraphDatabase.driver(targetAddress, AuthTokens.basic(targetUserName, targetPassword))) {
+
+            new DataCopy(sourceDriver, sourceDatabase, targetDriver, targetDatabase).copyAllNodesAndRels();
+        }
         return 0;
     }
 
