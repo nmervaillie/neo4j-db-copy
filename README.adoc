@@ -1,0 +1,49 @@
+== A Neo4j database copy tool over bolt
+
+A development tool useful to copy the data from a Neo4j database to another Neo4j database.
+Databases can be local or remote.
+As the copy is done through the Neo4j driver, no admin access to Neo4j is required.
+
+This is useful to copy things around, for example test/reference data from an environment to another.
+
+It has been tested on small to average database sizes.
+
+Note: data deletion, users, indexes, constraints are not handled.
+
+== Building
+
+Building / running requires Java 17+.
+
+`mvn clean package -DskipTests`
+
+The resulting app can be found in the `target` directory.
+
+== Usage
+
+[source,bash]
+----
+Usage: neo4j-db-copy [-hV] -sp -tp -sa=<sourceAddress> -sd=<sourceDatabase>
+                     [-su=<sourceUserName>] -ta=<targetAddress>
+                     -td=<targetDatabase> [-tu=<targetUserName>]
+Copy the content of a Neo4j database to another Neo4j database, via the
+network, through the bolt protocol.
+  -h, --help      Show this help message and exit.
+      -sa, --source-address=<sourceAddress>
+                  The source database address (ex: neo4j+s://my-server:7687)
+      -sd, --source-database=<sourceDatabase>
+                  The source database to connect to.
+      -sp, --source-password
+                  The source database password to connect with
+      -su, --source-username=<sourceUserName>
+                  The source database username to connect as (default: neo4j)
+      -ta, --target-address=<targetAddress>
+                  The target database address (ex: neo4j+s://my-server:7687)
+      -td, --target-database=<targetDatabase>
+                  The target database to connect to.
+      -tp, --target-password
+                  The target database password to connect with
+      -tu, --target-username=<targetUserName>
+                  The target database username to connect as (default: neo4j)
+  -V, --version   Print version information and exit.
+----
+
