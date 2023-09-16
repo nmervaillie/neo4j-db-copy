@@ -2,7 +2,8 @@ package org.neo4j.dbcopy;
 
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.SessionConfig;
-import org.neo4j.driver.reactive.RxSession;
+import org.neo4j.driver.reactivestreams.ReactiveResult;
+import org.neo4j.driver.reactivestreams.ReactiveSession;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Relationship;
 import org.slf4j.Logger;
@@ -60,37 +61,37 @@ class DataCopy {
 
 	private Flux<Node> readNodes() {
 		return Flux.usingWhen(Mono.fromSupplier(getSourceRxSession()),
-				session -> session.readTransaction(tx -> Flux.from(tx.run("MATCH (n) RETURN n").records())
+				session -> session.executeRead(tx -> Flux.from(tx.run("MATCH (n) RETURN n")).flatMap(ReactiveResult::records)
 						.map(record -> record.get(0).asNode())
 						.doOnSubscribe(it -> LOG.info("Start reading")))
-				, RxSession::close)
+				, ReactiveSession::close)
 			.doOnComplete(() -> LOG.info("\nReading complete"));
 	}
 
 	private Flux<Relationship> readRels() {
 		return Flux.usingWhen(Mono.fromSupplier(getSourceRxSession()),
-				session -> session.readTransaction(tx -> Flux.from(tx.run("MATCH ()-[rel]->() RETURN rel").records())
+				session -> session.executeRead(tx -> Mono.from(tx.run("MATCH ()-[rel]->() RETURN rel")).flatMapMany(ReactiveResult::records)
 						.map(record -> record.get(0).asRelationship())
 						.doOnSubscribe(it -> LOG.info("Start reading")))
-				, RxSession::close)
+				, ReactiveSession::close)
 			.doOnComplete(() -> LOG.info("\nReading rels complete"));
 	}
 
 	private Flux<Mapping> writeNodes(List<Node> nodes) {
 		return Flux.usingWhen(Mono.fromSupplier(getTargetRxSession()),
-				session -> session.writeTransaction(tx -> {
+				session -> session.executeWrite(tx -> {
 					List<Map<String, Object>> nodeData = nodes.stream()
 							.map(node -> Map.of("s", node.id(), "l", labels(node), "p", node.asMap()))
 							.toList();
-					return tx.run("""
+					return Mono.from(tx.run("""
 									UNWIND $inputList as input
 									CREATE (n) SET n = input.p
 									WITH n, input.s as sourceNodeId, input.l as labels
 									CALL apoc.create.addLabels(n, labels) YIELD node
 									RETURN sourceNodeId, id(n) as targetNodeId""",
-							parameters("inputList", nodeData)).records();
+							parameters("inputList", nodeData))).flatMapMany(ReactiveResult::records);
 				})
-				, RxSession::close)
+				, ReactiveSession::close)
 //				.doOnNext(it -> logBatchWrite())
 				.map(r -> new Mapping(r.get("sourceNodeId").asLong(), r.get("targetNodeId").asLong()));
 	}
@@ -105,14 +106,14 @@ class DataCopy {
 						"properties", rel.asMap()))
 				.toList();
 		return Flux.usingWhen(Mono.fromSupplier(getTargetRxSession()),
-						session -> session.writeTransaction(tx -> tx.run("""
+						session -> session.executeWrite(tx -> Mono.from(tx.run("""
 								UNWIND $inputList as input
 								MATCH (sourceNode) WHERE id(sourceNode)=input.s
 								MATCH (targetNode) WHERE id(targetNode)=input.t
 								CALL apoc.create.relationship(sourceNode, input.type, input.properties, targetNode) YIELD rel
 								RETURN count(*)""",
-								parameters("inputList", relData)).records())
-						, RxSession::close)
+								parameters("inputList", relData))).flatMapMany(ReactiveResult::records))
+						, ReactiveSession::close)
 //				.doOnNext(it -> logBatchWrite())
 				.map(record -> record.get(0).asLong())
 				.reduce(0L, Long::sum);
@@ -133,12 +134,12 @@ class DataCopy {
 		return StreamSupport.stream(node.labels().spliterator(), false).toList();
 	}
 
-	public Supplier<RxSession> getSourceRxSession() {
-		return () -> sourceDriver.rxSession(SessionConfig.forDatabase(sourceDbName));
+	public Supplier<ReactiveSession> getSourceRxSession() {
+		return () -> sourceDriver.session(ReactiveSession.class, SessionConfig.forDatabase(sourceDbName));
 	}
 
-	protected Supplier<RxSession> getTargetRxSession() {
-		return () -> targetDriver.rxSession(SessionConfig.forDatabase(targetDbName));
+	protected Supplier<ReactiveSession> getTargetRxSession() {
+		return () -> targetDriver.session(ReactiveSession.class, SessionConfig.forDatabase(targetDbName));
 	}
 
 }
