@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -24,6 +23,12 @@ class DataCopy {
 	protected static final Logger LOG = LoggerFactory.getLogger(DataCopy.class);
 
 	protected static final int WRITER_CONCURRENCY = 4;
+	protected static final int BATCH_SIZE = 1000;
+
+	private final Driver sourceDriver;
+	private final String sourceDbName;
+	private final Driver targetDriver;
+	private final String targetDbName;
 
 	public DataCopy(Driver sourceDriver, String sourceDbName, Driver targetDriver, String targetDbName) {
 		this.sourceDriver = sourceDriver;
@@ -32,51 +37,38 @@ class DataCopy {
 		this.targetDbName = targetDbName;
 	}
 
-	private final Driver sourceDriver;
-	private final String sourceDbName;
-	private final Driver targetDriver;
-	private final String targetDbName;
+	Mono<Long> copyAllNodesAndRels() {
 
-	protected static final int BATCH_SIZE = 1000;
-
-	private List<Mapping> sourceToTargetNodeIdMapping = new ArrayList<>();
-
-	void copyAllNodesAndRels() {
-
-		sourceToTargetNodeIdMapping = readNodes()
+		return readNodes()
 				.buffer(BATCH_SIZE)
-//				.doOnEach(it -> logBatchRead())
 				.flatMap(this::writeNodes, WRITER_CONCURRENCY)
 				.collectList()
-//				.reduce(0L, (count, result) -> count + result.counters().nodesCreated())
-				.block();
-
-		Long nbRelsWritten = readRels()
-				.buffer(BATCH_SIZE)
-				.flatMap(this::writeRels, WRITER_CONCURRENCY)
-				.reduce(0L, Long::sum)
-				.block();
-		System.out.println(nbRelsWritten + " rels written");
+				.flatMap(mapping -> readRels()
+					.buffer(BATCH_SIZE)
+					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mapping), WRITER_CONCURRENCY)
+					.reduce(0L, Long::sum)
+				);
 	}
 
 	private Flux<Node> readNodes() {
 		return Flux.usingWhen(Mono.fromSupplier(getSourceRxSession()),
 				session -> session.executeRead(tx -> Flux.from(tx.run("MATCH (n) RETURN n")).flatMap(ReactiveResult::records)
 						.map(record -> record.get(0).asNode())
-						.doOnSubscribe(it -> LOG.info("Start reading")))
+						.doOnSubscribe(it -> LOG.info("Start reading nodes")))
 				, ReactiveSession::close)
-			.doOnComplete(() -> LOG.info("\nReading complete"));
+			.doOnComplete(() -> LOG.info("Nodes reading complete"));
 	}
 
 	private Flux<Relationship> readRels() {
 		return Flux.usingWhen(Mono.fromSupplier(getSourceRxSession()),
 				session -> session.executeRead(tx -> Mono.from(tx.run("MATCH ()-[rel]->() RETURN rel")).flatMapMany(ReactiveResult::records)
 						.map(record -> record.get(0).asRelationship())
-						.doOnSubscribe(it -> LOG.info("Start reading")))
+						.doOnSubscribe(it -> LOG.info("Start reading relationships")))
 				, ReactiveSession::close)
-			.doOnComplete(() -> LOG.info("\nReading rels complete"));
+			.doOnComplete(() -> LOG.info("Relationship reading complete"));
 	}
 
+	@SuppressWarnings("deprecation")
 	private Flux<Mapping> writeNodes(List<Node> nodes) {
 		return Flux.usingWhen(Mono.fromSupplier(getTargetRxSession()),
 				session -> session.executeWrite(tx -> {
@@ -96,7 +88,8 @@ class DataCopy {
 				.map(r -> new Mapping(r.get("sourceNodeId").asLong(), r.get("targetNodeId").asLong()));
 	}
 
-	private Mono<Long> writeRels(List<Relationship> relationships) {
+    @SuppressWarnings("deprecation")
+    private Mono<Long> writeRels(List<Relationship> relationships, List<Mapping> sourceToTargetNodeIdMapping) {
 
 		var relData = relationships.stream()
 				.map(rel -> Map.of(
@@ -115,6 +108,7 @@ class DataCopy {
 								parameters("inputList", relData))).flatMapMany(ReactiveResult::records))
 						, ReactiveSession::close)
 //				.doOnNext(it -> logBatchWrite())
+				.doOnComplete(() -> LOG.info("Relationships writing complete"))
 				.map(record -> record.get(0).asLong())
 				.reduce(0L, Long::sum);
 	}

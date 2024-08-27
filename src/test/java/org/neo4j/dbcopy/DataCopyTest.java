@@ -1,5 +1,6 @@
 package org.neo4j.dbcopy;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.*;
@@ -34,6 +35,13 @@ public class DataCopyTest {
         targetSession.run("MATCH (n) DETACH DELETE n;").consume();
     }
 
+    @AfterEach
+    void tearDown() {
+        sourceSession.close();
+        targetSession.close();
+        driver.close();
+    }
+
     private List<Node> getAllNodes() {
         return targetSession.run("MATCH (n) RETURN n").list((rec) -> rec.get(0).asNode());
     }
@@ -48,7 +56,7 @@ public class DataCopyTest {
         sourceSession.run("CREATE (one:NodeOne) SET one.prop = 123").consume();
 
         DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
-        dataCopy.copyAllNodesAndRels();
+        dataCopy.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
         assertThat(nodes).hasSize(1);
@@ -63,7 +71,7 @@ public class DataCopyTest {
         sourceSession.run("CREATE (one:NodeOne) SET one.prop=123").consume();
 
         DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
-        dataCopy.copyAllNodesAndRels();
+        dataCopy.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
         assertThat(nodes).hasSize(1);
@@ -77,7 +85,7 @@ public class DataCopyTest {
         sourceSession.run("CREATE (one:NodeOne:NodeTwo)").consume();
 
         DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
-        dataCopy.copyAllNodesAndRels();
+        dataCopy.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
         assertThat(nodes).hasSize(1);
@@ -91,7 +99,7 @@ public class DataCopyTest {
         sourceSession.run("CREATE (one:NodeOne)-[:TO]->(two:NodeTwo)").consume();
 
         DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
-        dataCopy.copyAllNodesAndRels();
+        dataCopy.copyAllNodesAndRels().block();
 
         List<Path> paths = getAllPaths();
         assertThat(paths).hasSize(1);
@@ -107,7 +115,7 @@ public class DataCopyTest {
         sourceSession.run("CREATE (one:NodeOne)-[to:TO]->(two:NodeTwo) SET to.value='foo'").consume();
 
         DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
-        dataCopy.copyAllNodesAndRels();
+        dataCopy.copyAllNodesAndRels().block();
 
         Relationship rel = getAllPaths().get(0).relationships().iterator().next();
         assertThat(rel.type()).isEqualTo("TO");
