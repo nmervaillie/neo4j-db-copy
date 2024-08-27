@@ -39,13 +39,15 @@ class DataCopy {
 
 	Mono<Long> copyAllNodesAndRels() {
 
+		var mappingContext = new MappingContext(10000);
 		return readNodes()
 				.buffer(BATCH_SIZE)
 				.flatMap(this::writeNodes, WRITER_CONCURRENCY)
 				.collectList()
-				.flatMap(mapping -> readRels()
+				.map(mappingContext::add)
+				.flatMap(mappings -> readRels()
 					.buffer(BATCH_SIZE)
-					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mapping), WRITER_CONCURRENCY)
+					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mappings), WRITER_CONCURRENCY)
 					.reduce(0L, Long::sum)
 				);
 	}
@@ -69,7 +71,7 @@ class DataCopy {
 	}
 
 	@SuppressWarnings("deprecation")
-	private Flux<Mapping> writeNodes(List<Node> nodes) {
+	private Flux<MappingContext.Mapping> writeNodes(List<Node> nodes) {
 		return Flux.usingWhen(Mono.fromSupplier(getTargetRxSession()),
 				session -> session.executeWrite(tx -> {
 					List<Map<String, Object>> nodeData = nodes.stream()
@@ -85,16 +87,16 @@ class DataCopy {
 				})
 				, ReactiveSession::close)
 //				.doOnNext(it -> logBatchWrite())
-				.map(r -> new Mapping(r.get("sourceNodeId").asLong(), r.get("targetNodeId").asLong()));
+				.map(r -> new MappingContext.Mapping(r.get("sourceNodeId").asLong(), r.get("targetNodeId").asLong()));
 	}
 
     @SuppressWarnings("deprecation")
-    private Mono<Long> writeRels(List<Relationship> relationships, List<Mapping> sourceToTargetNodeIdMapping) {
+    private Mono<Long> writeRels(List<Relationship> relationships, MappingContext mappingContext) {
 
 		var relData = relationships.stream()
 				.map(rel -> Map.of(
-						"s", findMapping(sourceToTargetNodeIdMapping, rel.startNodeId()),
-						"t", findMapping(sourceToTargetNodeIdMapping, rel.endNodeId()),
+						"s", mappingContext.get(rel.startNodeId()),
+						"t", mappingContext.get(rel.endNodeId()),
 						"type", rel.type(),
 						"properties", rel.asMap()))
 				.toList();
@@ -112,17 +114,6 @@ class DataCopy {
 				.map(record -> record.get(0).asLong())
 				.reduce(0L, Long::sum);
 	}
-
-	private long findMapping(List<Mapping> mappings, long id) {
-		 for (Mapping mapping : mappings) {
-			 if (mapping.sourceNodeId == id) {
-				 return mapping.targetNodeId;
-			 }
-		 }
-		 throw new IllegalStateException("Unable to find source node with id " + id);
-	}
-
-	record Mapping(long sourceNodeId, long targetNodeId){}
 
 	private static List<String> labels(Node node) {
 		return StreamSupport.stream(node.labels().spliterator(), false).toList();
