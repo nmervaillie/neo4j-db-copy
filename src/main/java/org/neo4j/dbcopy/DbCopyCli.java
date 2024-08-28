@@ -8,6 +8,8 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.net.URI;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 @Command(name = "neo4j-db-copy", mixinStandardHelpOptions = true, version = "checksum 4.0",
@@ -38,6 +40,12 @@ class DbCopyCli implements Callable<Integer> {
     @Option(names = {"-td", "--target-database"}, required = true, description = "The target database to connect to.")
     private String targetDatabase;
 
+    @Option(names = {"-enp", "--exclude-node-properties"}, split = ",", description = "Comma-separated list of node properties to exclude from the copy")
+    private Set<String> excludeNodeProperties = new HashSet<>();
+
+    @Option(names = {"-erp", "--exclude-relationship-properties"}, split = ",", description = "Comma-separated list of relationship properties to exclude from the copy")
+    private Set<String> excludeRelationshipProperties = new HashSet<>();
+
     @Override
     public Integer call() {
 
@@ -46,7 +54,12 @@ class DbCopyCli implements Callable<Integer> {
              sourceDriver.verifyConnectivity();
              targetDriver.verifyConnectivity();
 
-            new DataCopy(sourceDriver, sourceDatabase, targetDriver, targetDatabase).copyAllNodesAndRels().block();
+            CopyOptions copyOptions = new CopyOptions.Builder()
+                    .excludeNodeProperties(excludeNodeProperties)
+                    .excludeRelationshipProperties(excludeRelationshipProperties)
+                    .build();
+
+            new DataCopy(sourceDriver, sourceDatabase, targetDriver, targetDatabase, copyOptions).copyAllNodesAndRels().block();
         }
         return 0;
     }

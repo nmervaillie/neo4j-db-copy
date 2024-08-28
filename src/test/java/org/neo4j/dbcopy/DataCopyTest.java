@@ -10,6 +10,7 @@ import org.neo4j.driver.types.Relationship;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,7 +56,7 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne) SET one.prop = 123").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
+        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
         dataCopy.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
@@ -70,7 +71,7 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne) SET one.prop=123").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
+        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
         dataCopy.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
@@ -84,7 +85,7 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne:NodeTwo)").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
+        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
         dataCopy.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
@@ -98,7 +99,7 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne)-[:TO]->(two:NodeTwo)").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
+        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
         dataCopy.copyAllNodesAndRels().block();
 
         List<Path> paths = getAllPaths();
@@ -114,11 +115,45 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne)-[to:TO]->(two:NodeTwo) SET to.value='foo'").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB);
+        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
         dataCopy.copyAllNodesAndRels().block();
 
         Relationship rel = getAllPaths().get(0).relationships().iterator().next();
         assertThat(rel.type()).isEqualTo("TO");
         assertThat(rel.asMap()).containsExactly(Map.entry("value", "foo"));
+    }
+
+    @Test
+    void should_copy_node_with_excluded_properties() {
+        sourceSession.run("CREATE (one:NodeOne {prop1: 'value1', prop2: 'value2', prop3: 'value3'})").consume();
+
+        CopyOptions copyOption = new CopyOptions.Builder()
+                .excludeNodeProperties(Set.of("prop2"))
+                .build();
+        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
+
+        dataCopy.copyAllNodesAndRels().block();
+
+        List<Node> nodes = getAllNodes();
+        assertThat(nodes).hasSize(1);
+        Node node = nodes.get(0);
+        assertThat(node.asMap()).containsEntry("prop1", "value1").containsEntry("prop3", "value3");
+        assertThat(node.asMap()).doesNotContainKeys("prop2");
+    }
+
+    @Test
+    void should_copy_relationship_with_excluded_properties() {
+        sourceSession.run("CREATE (one:NodeOne)-[rel:TO {prop1: 'value1', prop2: 'value2', prop3: 'value3'}]->(two:NodeTwo)").consume();
+
+        CopyOptions copyOption = new CopyOptions.Builder()
+                .excludeRelationshipProperties(Set.of("prop3"))
+                .build();
+        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
+
+        dataCopy.copyAllNodesAndRels().block();
+
+        Relationship rel = getAllPaths().get(0).relationships().iterator().next();
+        assertThat(rel.asMap()).containsEntry("prop1", "value1").containsEntry("prop2", "value2");
+        assertThat(rel.asMap()).doesNotContainKeys("prop3");
     }
 }

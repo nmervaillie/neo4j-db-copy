@@ -25,8 +25,20 @@ The resulting app can be found in the `target` directory.
 Usage: neo4j-db-copy [-hV] -sp -tp -sa=<sourceAddress> -sd=<sourceDatabase>
                      [-su=<sourceUserName>] -ta=<targetAddress>
                      -td=<targetDatabase> [-tu=<targetUserName>]
+                     [-enp=<excludeNodeProperties>[,
+                     <excludeNodeProperties>...]]...
+                     [-erp=<excludeRelationshipProperties>[,
+                     <excludeRelationshipProperties>...]]...
 Copy the content of a Neo4j database to another Neo4j database, via the
 network, through the bolt protocol.
+      -enp, --exclude-node-properties=<excludeNodeProperties>[,
+        <excludeNodeProperties>...]
+                  Comma-separated list of node properties to exclude from the
+                    copy
+      -erp, --exclude-relationship-properties=<excludeRelationshipProperties>[,
+        <excludeRelationshipProperties>...]
+                  Comma-separated list of relationship properties to exclude
+                    from the copy
   -h, --help      Show this help message and exit.
       -sa, --source-address=<sourceAddress>
                   The source database address (ex: neo4j+s://my-server:7687)
