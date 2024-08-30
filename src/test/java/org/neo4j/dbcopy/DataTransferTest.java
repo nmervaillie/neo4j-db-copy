@@ -1,12 +1,15 @@
 package org.neo4j.dbcopy;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.neo4j.driver.*;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Path;
 import org.neo4j.driver.types.Relationship;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.Neo4jContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 import java.util.Map;
@@ -16,19 +19,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class DataTransferTest {
 
+    public static final Logger LOG = LoggerFactory.getLogger(DataTransferTest.class);
     private static final AuthToken AUTH_TOKEN = AuthTokens.basic("neo4j", "password");
-//    private static final Config DRIVER_CONFIG = Config.builder()
-//            .withMaxConnectionPoolSize(4)
-//            .withEventLoopThreads(4 * 2)
-////			.withFetchSize(50)
-//            .build();
-    public static final String SOURCE_DB = "sourcedb";
-    public static final String TARGET_DB = "targetdb";
+    private static final String SOURCE_DB = "sourcedb";
+    private static final String TARGET_DB = "targetdb";
 
-    Driver driver = GraphDatabase.driver("bolt://localhost", AUTH_TOKEN);
+    static Neo4jContainer<?> neo4j = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.19.0-enterprise"))
+            .withAdminPassword("password")
+            .withLogConsumer(new Slf4jLogConsumer(LOG))
+            .withEnv("NEO4J_ACCEPT_LICENSE_AGREEMENT", "yes")
+            .withPlugins("apoc")
+            .withReuse(true);
 
+    static Driver driver;
     Session sourceSession = driver.session(SessionConfig.forDatabase(SOURCE_DB));
     private final Session targetSession = driver.session(SessionConfig.forDatabase(TARGET_DB));
+
+    @BeforeAll
+    static void beforeAll() {
+        neo4j.start();
+        driver = GraphDatabase.driver(neo4j.getBoltUrl(), AUTH_TOKEN);
+        driver.executableQuery("CREATE DATABASE " + SOURCE_DB + " WAIT").execute();
+        driver.executableQuery("CREATE DATABASE " + TARGET_DB + " WAIT").execute();
+    }
+
+    @AfterAll
+    static void afterAll() {
+        driver.close();
+    }
 
     @BeforeEach
     void setUp() {
@@ -40,7 +58,6 @@ public class DataTransferTest {
     void tearDown() {
         sourceSession.close();
         targetSession.close();
-        driver.close();
     }
 
     private List<Node> getAllNodes() {

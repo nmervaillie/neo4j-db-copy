@@ -20,6 +20,9 @@
         <blockhound-junit-platform.version>1.0.3.RELEASE</blockhound-junit-platform.version>
         <picocli.version>4.7.6</picocli.version>
         <maven-compiler-plugin-version>3.10.1</maven-compiler-plugin-version>
+        <testcontainers-bom.version>1.20.1</testcontainers-bom.version>
+        <surefire.version>3.0.0-M7</surefire.version>
+        <failsafe.version>3.0.0-M7</failsafe.version>
     </properties>
 
     <dependencies>
@@ -65,6 +68,11 @@
             <version>5.13.0</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>neo4j</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!--        <dependency>-->
         <!--            <groupId>io.projectreactor.tools</groupId>-->
         <!--            <artifactId>blockhound-junit-platform</artifactId>-->
@@ -78,6 +86,13 @@
                 <groupId>io.projectreactor</groupId>
                 <artifactId>reactor-bom</artifactId>
                 <version>${reactor-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -160,6 +175,27 @@
                         <phase>package</phase>
                         <goals>
                             <goal>really-executable-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.version}</version>
+                <configuration>
+                    <!-- Add configurations here if needed -->
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${failsafe.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
                         </goals>
                     </execution>
                 </executions>
