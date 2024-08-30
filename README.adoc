@@ -1,5 +1,7 @@
 == A Neo4j database copy tool over bolt
 
+image:https://github.com/nmervaillie/neo4j-db-copy/actions/workflows/ci.yml/badge.svg["CI", link="https://github.com/nmervaillie/neo4j-db-copy/actions/workflows/ci.yml"]
+
 A development tool useful to copy the data from a Neo4j database to another Neo4j database.
 Databases can be local or remote.
 As the copy is done through the Neo4j driver, no admin access to Neo4j is required.
