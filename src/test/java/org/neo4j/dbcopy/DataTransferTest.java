@@ -14,7 +14,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DataCopyTest {
+public class DataTransferTest {
 
     private static final AuthToken AUTH_TOKEN = AuthTokens.basic("neo4j", "password");
 //    private static final Config DRIVER_CONFIG = Config.builder()
@@ -56,8 +56,8 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne) SET one.prop = 123").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
-        dataCopy.copyAllNodesAndRels().block();
+        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        dataTransfer.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
         assertThat(nodes).hasSize(1);
@@ -71,8 +71,8 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne) SET one.prop=123").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
-        dataCopy.copyAllNodesAndRels().block();
+        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        dataTransfer.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
         assertThat(nodes).hasSize(1);
@@ -85,8 +85,8 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne:NodeTwo)").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
-        dataCopy.copyAllNodesAndRels().block();
+        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        dataTransfer.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
         assertThat(nodes).hasSize(1);
@@ -99,8 +99,8 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne)-[:TO]->(two:NodeTwo)").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
-        dataCopy.copyAllNodesAndRels().block();
+        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        dataTransfer.copyAllNodesAndRels().block();
 
         List<Path> paths = getAllPaths();
         assertThat(paths).hasSize(1);
@@ -115,8 +115,8 @@ public class DataCopyTest {
 
         sourceSession.run("CREATE (one:NodeOne)-[to:TO]->(two:NodeTwo) SET to.value='foo'").consume();
 
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
-        dataCopy.copyAllNodesAndRels().block();
+        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        dataTransfer.copyAllNodesAndRels().block();
 
         Relationship rel = getAllPaths().get(0).relationships().iterator().next();
         assertThat(rel.type()).isEqualTo("TO");
@@ -130,9 +130,9 @@ public class DataCopyTest {
         CopyOptions copyOption = new CopyOptions.Builder()
                 .excludeNodeProperties(Set.of("prop2"))
                 .build();
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
+        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
 
-        dataCopy.copyAllNodesAndRels().block();
+        dataTransfer.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
         assertThat(nodes).hasSize(1);
@@ -148,9 +148,9 @@ public class DataCopyTest {
         CopyOptions copyOption = new CopyOptions.Builder()
                 .excludeRelationshipProperties(Set.of("prop3"))
                 .build();
-        DataCopy dataCopy = new DataCopy(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
+        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
 
-        dataCopy.copyAllNodesAndRels().block();
+        dataTransfer.copyAllNodesAndRels().block();
 
         Relationship rel = getAllPaths().get(0).relationships().iterator().next();
         assertThat(rel.asMap()).containsEntry("prop1", "value1").containsEntry("prop2", "value2");

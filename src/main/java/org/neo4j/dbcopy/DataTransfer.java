@@ -20,9 +20,9 @@ import java.util.stream.StreamSupport;
 
 import static org.neo4j.driver.Values.parameters;
 
-class DataCopy {
+class DataTransfer {
 
-	protected static final Logger LOG = LoggerFactory.getLogger(DataCopy.class);
+	protected static final Logger LOG = LoggerFactory.getLogger(DataTransfer.class);
 
 	protected static final int WRITER_CONCURRENCY = 4;
 	protected static final int BATCH_SIZE = 1000;
@@ -33,7 +33,7 @@ class DataCopy {
 	private final String targetDbName;
 	private final CopyOptions copyOptions;
 
-	public DataCopy(Driver sourceDriver, String sourceDbName, Driver targetDriver, String targetDbName, CopyOptions copyOptions) {
+	public DataTransfer(Driver sourceDriver, String sourceDbName, Driver targetDriver, String targetDbName, CopyOptions copyOptions) {
 		this.sourceDriver = sourceDriver;
 		this.sourceDbName = sourceDbName;
 		this.targetDriver = targetDriver;

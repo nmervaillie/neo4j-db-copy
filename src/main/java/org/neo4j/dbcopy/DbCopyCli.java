@@ -59,7 +59,7 @@ class DbCopyCli implements Callable<Integer> {
                     .excludeRelationshipProperties(excludeRelationshipProperties)
                     .build();
 
-            new DataCopy(sourceDriver, sourceDatabase, targetDriver, targetDatabase, copyOptions).copyAllNodesAndRels().block();
+            new DataTransfer(sourceDriver, sourceDatabase, targetDriver, targetDatabase, copyOptions).copyAllNodesAndRels().block();
         }
         return 0;
     }
