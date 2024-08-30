@@ -8,6 +8,29 @@
     <artifactId>neo4j-db-copy</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <description>Neo4j data copy tool, through the bolt protocol</description>
+    <url>https://github.com/nmervaillie/neo4j-db-copy</url>
+    <inceptionYear>2023</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>nmervaillie</id>
+            <name>Nicolas Mervaillie</name>
+            <roles>
+                <role>Graphista</role>
+            </roles>
+            <timezone>+1</timezone>
+        </developer>
+    </developers>
+
     <properties>
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
@@ -23,6 +46,7 @@
         <testcontainers-bom.version>1.20.1</testcontainers-bom.version>
         <surefire.version>3.0.0-M7</surefire.version>
         <failsafe.version>3.0.0-M7</failsafe.version>
+        <jreleaser.version>1.13.1</jreleaser.version>
     </properties>
 
     <dependencies>
@@ -175,6 +199,47 @@
                         <phase>package</phase>
                         <goals>
                             <goal>really-executable-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jreleaser</groupId>
+                <artifactId>jreleaser-maven-plugin</artifactId>
+                <version>${jreleaser.version}</version>
+                <inherited>false</inherited>
+                <configuration>
+                    <jreleaser>
+                        <release>
+                            <github>
+                                <owner>nmervaillie</owner>
+                                <overwrite>true</overwrite>
+                                <tagName>{{projectVersion}}</tagName>
+                                <releaseName>Release {{projectVersion}}</releaseName>
+                            </github>
+                        </release>
+                        <distributions>
+                            <app>
+                                <artifacts>
+                                    <artifact>
+                                        <path>
+                                            ${project.build.directory}/${project.artifactId}
+                                        </path>
+                                    </artifact>
+                                    <artifact>
+                                        <path>
+                                            ${project.build.directory}/${project.artifactId}-${project.version}.jar
+                                        </path>
+                                    </artifact>
+                                </artifacts>
+                            </app>
+                        </distributions>
+                    </jreleaser>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>full-release</goal>
                         </goals>
                     </execution>
                 </executions>
