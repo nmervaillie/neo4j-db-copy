@@ -43,13 +43,19 @@ class DataTransfer {
 
 	Mono<Long> copyAllNodesAndRels() {
 		var mappingContext = new MappingContext(10000);
+
+        ProgressBar nodeProgressBar = new ProgressBar("Nodes", getTotalNodeCount());
+		ProgressBar relationshipProgressBar = new ProgressBar("Relationships", getTotalRelationshipCount());
+
 		return readNodes()
 				.buffer(BATCH_SIZE)
+				.doOnNext(batch -> nodeProgressBar.updateProgress(batch.size()))
 				.flatMap(this::writeNodes, WRITER_CONCURRENCY)
 				.collectList()
 				.map(mappingContext::add)
 				.flatMap(mappings -> readRels()
 					.buffer(BATCH_SIZE)
+					.doOnNext(batch -> relationshipProgressBar.updateProgress(batch.size()))
 					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mappings), WRITER_CONCURRENCY)
 					.reduce(0L, Long::sum)
 				)
@@ -61,8 +67,7 @@ class DataTransfer {
 				session -> session.executeRead(tx -> Flux.from(tx.run("MATCH (n) RETURN n")).flatMap(ReactiveResult::records)
 						.map(record -> record.get(0).asNode())
 						.doOnSubscribe(it -> LOG.info("Start reading nodes")))
-				, ReactiveSession::close)
-			.doOnComplete(() -> LOG.info("Nodes reading complete"));
+				, ReactiveSession::close);
 	}
 
 	private Flux<Relationship> readRels() {
@@ -70,8 +75,7 @@ class DataTransfer {
 						session -> session.executeRead(tx -> Mono.from(tx.run("MATCH ()-[rel]->() RETURN rel")).flatMapMany(ReactiveResult::records)
 								.map(record -> record.get(0).asRelationship())
 								.doOnSubscribe(it -> LOG.info("Start reading relationships")))
-						, ReactiveSession::close)
-				.doOnComplete(() -> LOG.info("Relationship reading complete"));
+						, ReactiveSession::close);
 	}
 
 	private Flux<MappingContext.Mapping> writeNodes(List<Node> nodes) {
@@ -134,5 +138,17 @@ class DataTransfer {
 
 	protected Supplier<ReactiveSession> getTargetRxSession() {
 		return () -> targetDriver.session(ReactiveSession.class, SessionConfig.forDatabase(targetDbName));
+	}
+
+	private long getTotalNodeCount() {
+		try (var session = sourceDriver.session(SessionConfig.forDatabase(sourceDbName))) {
+			return session.run("MATCH (n) RETURN count(n) AS count").single().get("count").asLong();
+		}
+	}
+
+	private long getTotalRelationshipCount() {
+		try (var session = sourceDriver.session(SessionConfig.forDatabase(sourceDbName))) {
+			return session.run("MATCH ()-[r]->() RETURN count(r) AS count").single().get("count").asLong();
+		}
 	}
 }
