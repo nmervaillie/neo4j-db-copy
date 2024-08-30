@@ -25,7 +25,7 @@ class DataTransfer {
 	protected static final Logger LOG = LoggerFactory.getLogger(DataTransfer.class);
 
 	protected static final int WRITER_CONCURRENCY = 4;
-	protected static final int BATCH_SIZE = 1000;
+	protected static final int BATCH_SIZE = 5000;
 
 	private final Driver sourceDriver;
 	private final String sourceDbName;
@@ -56,7 +56,7 @@ class DataTransfer {
 				.flatMap(mappings -> readRels()
 					.buffer(BATCH_SIZE)
 					.doOnNext(batch -> relationshipProgressBar.updateProgress(batch.size()))
-					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mappings), WRITER_CONCURRENCY)
+					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mappings), 1)
 					.reduce(0L, Long::sum)
 				)
 				.doOnSuccess(it -> LOG.info("Relationships writing complete - {} relationships written", it));
