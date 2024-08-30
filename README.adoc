@@ -22,10 +22,10 @@ The resulting app can be found in the `target` directory.
 
 [source,bash]
 ----
-Usage: neo4j-db-copy [-hV] -sp -tp -sa=<sourceAddress> -sd=<sourceDatabase>
-                     [-su=<sourceUserName>] -ta=<targetAddress>
-                     -td=<targetDatabase> [-tu=<targetUserName>]
-                     [-enp=<excludeNodeProperties>[,
+Usage: neo4j-db-copy [-hV] [-lock] -sp -tp -sa=<sourceAddress>
+                     -sd=<sourceDatabase> [-su=<sourceUserName>]
+                     -ta=<targetAddress> -td=<targetDatabase>
+                     [-tu=<targetUserName>] [-enp=<excludeNodeProperties>[,
                      <excludeNodeProperties>...]]...
                      [-erp=<excludeRelationshipProperties>[,
                      <excludeRelationshipProperties>...]]...
@@ -40,6 +40,8 @@ network, through the bolt protocol.
                   Comma-separated list of relationship properties to exclude
                     from the copy
   -h, --help      Show this help message and exit.
+      -lock, --lock-source-database
+                  Set the source database to read-only mode before copying
       -sa, --source-address=<sourceAddress>
                   The source database address (ex: neo4j+s://my-server:7687)
       -sd, --source-database=<sourceDatabase>

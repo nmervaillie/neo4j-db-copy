@@ -46,6 +46,9 @@ class DbCopyCli implements Callable<Integer> {
     @Option(names = {"-erp", "--exclude-relationship-properties"}, split = ",", description = "Comma-separated list of relationship properties to exclude from the copy")
     private Set<String> excludeRelationshipProperties = new HashSet<>();
 
+    @Option(names = {"-lock", "--lock-source-database"}, description = "Set the source database to read-only mode before copying")
+    private boolean lockSourceDatabase = false;
+
     @Override
     public Integer call() {
 
@@ -59,7 +62,13 @@ class DbCopyCli implements Callable<Integer> {
                     .excludeRelationshipProperties(excludeRelationshipProperties)
                     .build();
 
-            new DataTransfer(sourceDriver, sourceDatabase, targetDriver, targetDatabase, copyOptions).copyAllNodesAndRels().block();
+            DatabaseStateManager databaseStateManager = (lockSourceDatabase) ? new LockingDatabaseStateManager(sourceDriver, sourceDatabase) : new DatabaseStateManager(){};
+            databaseStateManager.makeReadOnly();
+            try {
+                new DataTransfer(sourceDriver, sourceDatabase, targetDriver, targetDatabase, copyOptions).copyAllNodesAndRels().block();
+            } finally {
+                databaseStateManager.restoreInitialState();
+            }
         }
         return 0;
     }
