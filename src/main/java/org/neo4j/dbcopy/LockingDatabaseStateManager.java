@@ -53,7 +53,7 @@ class LockingDatabaseStateManager implements DatabaseStateManager {
 
     DatabaseInfo getDatabaseInfo() {
         try (Session session = driver.session(SessionConfig.forDatabase("system"))) {
-            Record result = session.run("SHOW DATABASE " + dbName).single();
+            Record result = session.run("SHOW DATABASE `" + dbName + "`").single();
             return new DatabaseInfo(dbName, result.get("currentStatus").asString(), result.get("access").asString());
         } catch (NoSuchRecordException e) {
             throw new IllegalStateException("Unable to find database " + dbName);
@@ -64,7 +64,7 @@ class LockingDatabaseStateManager implements DatabaseStateManager {
         LOG.info("Setting Database {} to {} mode", dbName, accessMode);
         try (Session session = driver.session(SessionConfig.forDatabase("system"))) {
             session.executeWriteWithoutResult(tx -> {
-                tx.run("ALTER DATABASE " + dbName + " SET ACCESS " + accessMode + " WAIT");
+                tx.run("ALTER DATABASE `" + dbName + "` SET ACCESS " + accessMode + " WAIT");
             });
         }
     }
