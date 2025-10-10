@@ -1,15 +1,14 @@
 package org.neo4j.dbcopy;
 
 import org.junit.jupiter.api.*;
+import org.neo4j.dbcopy.bolt.BoltReader;
+import org.neo4j.dbcopy.bolt.BoltWriter;
 import org.neo4j.driver.*;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Path;
 import org.neo4j.driver.types.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.Neo4jContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 import java.util.Map;
@@ -32,8 +31,10 @@ public class DataTransferTest {
             .withReuse(true);
 
     static Driver driver;
-    Session sourceSession = driver.session(SessionConfig.forDatabase(SOURCE_DB));
+    private final Session sourceSession = driver.session(SessionConfig.forDatabase(SOURCE_DB));
     private final Session targetSession = driver.session(SessionConfig.forDatabase(TARGET_DB));
+    DataReader dataReader;
+    DataWriter dataWriter;
 
     @BeforeAll
     static void beforeAll() {
@@ -52,6 +53,8 @@ public class DataTransferTest {
     void setUp() {
         sourceSession.run("MATCH (n) DETACH DELETE n;").consume();
         targetSession.run("MATCH (n) DETACH DELETE n;").consume();
+        dataReader = new BoltReader(driver, SOURCE_DB);
+        dataWriter = new BoltWriter(driver, TARGET_DB);
     }
 
     @AfterEach
@@ -73,7 +76,7 @@ public class DataTransferTest {
 
         sourceSession.run("CREATE (one:NodeOne) SET one.prop = 123").consume();
 
-        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
         dataTransfer.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
@@ -88,7 +91,7 @@ public class DataTransferTest {
 
         sourceSession.run("CREATE (one:NodeOne) SET one.prop=123").consume();
 
-        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
         dataTransfer.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
@@ -102,7 +105,7 @@ public class DataTransferTest {
 
         sourceSession.run("CREATE (one:NodeOne:NodeTwo)").consume();
 
-        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
         dataTransfer.copyAllNodesAndRels().block();
 
         List<Node> nodes = getAllNodes();
@@ -116,7 +119,7 @@ public class DataTransferTest {
 
         sourceSession.run("CREATE (one:NodeOne)-[:TO]->(two:NodeTwo)").consume();
 
-        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
         dataTransfer.copyAllNodesAndRels().block();
 
         List<Path> paths = getAllPaths();
@@ -132,7 +135,7 @@ public class DataTransferTest {
 
         sourceSession.run("CREATE (one:NodeOne)-[to:TO]->(two:NodeTwo) SET to.value='foo'").consume();
 
-        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, CopyOptions.DEFAULT);
+        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
         dataTransfer.copyAllNodesAndRels().block();
 
         Relationship rel = getAllPaths().get(0).relationships().iterator().next();
@@ -147,7 +150,7 @@ public class DataTransferTest {
         CopyOptions copyOption = new CopyOptions.Builder()
                 .excludeNodeProperties(Set.of("prop2"))
                 .build();
-        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
+        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, copyOption);
 
         dataTransfer.copyAllNodesAndRels().block();
 
@@ -165,7 +168,7 @@ public class DataTransferTest {
         CopyOptions copyOption = new CopyOptions.Builder()
                 .excludeRelationshipProperties(Set.of("prop3"))
                 .build();
-        DataTransfer dataTransfer = new DataTransfer(driver, SOURCE_DB, driver, TARGET_DB, copyOption);
+        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, copyOption);
 
         dataTransfer.copyAllNodesAndRels().block();
 

@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MappingContext {
 
-    record Mapping(long sourceNodeId, long targetNodeId){}
+    public record Mapping(long sourceNodeId, long targetNodeId){}
 
     private static Map<Long, Long> MAPPINGS;
 
@@ -14,14 +14,14 @@ public class MappingContext {
         MAPPINGS = new ConcurrentHashMap<>(initialCapacity);
     }
 
-    MappingContext add(List<Mapping> mappings) {
+    public MappingContext add(List<Mapping> mappings) {
         for (Mapping mapping : mappings) {
             MAPPINGS.put(mapping.sourceNodeId, mapping.targetNodeId);
         }
         return this;
     }
 
-    Long get(Long sourceId) {
+    public Long get(Long sourceId) {
         var targetId = MAPPINGS.get(sourceId);
         if (targetId == null) {
             throw new IllegalStateException("Unable to find source node with id " + sourceId);

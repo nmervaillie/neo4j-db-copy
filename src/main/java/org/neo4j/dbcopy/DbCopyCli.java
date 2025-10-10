@@ -1,5 +1,7 @@
 package org.neo4j.dbcopy;
 
+import org.neo4j.dbcopy.bolt.BoltReader;
+import org.neo4j.dbcopy.bolt.BoltWriter;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -64,8 +66,10 @@ class DbCopyCli implements Callable<Integer> {
 
             DatabaseStateManager databaseStateManager = (lockSourceDatabase) ? new LockingDatabaseStateManager(sourceDriver, sourceDatabase) : new DatabaseStateManager(){};
             databaseStateManager.makeReadOnly();
+            DataReader reader = new BoltReader(sourceDriver, sourceDatabase);
+            DataWriter writer = new BoltWriter(targetDriver, targetDatabase);
             try {
-                new DataTransfer(sourceDriver, sourceDatabase, targetDriver, targetDatabase, copyOptions).copyAllNodesAndRels().block();
+                new DataTransfer(reader, writer, copyOptions).copyAllNodesAndRels().block();
             } finally {
                 databaseStateManager.restoreInitialState();
             }
