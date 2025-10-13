@@ -9,6 +9,9 @@ import org.neo4j.driver.types.Path;
 import org.neo4j.driver.types.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.Neo4jContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 import java.util.Map;
@@ -23,6 +26,7 @@ public class DataTransferTest {
     private static final String SOURCE_DB = "sourcedb";
     private static final String TARGET_DB = "targetdb";
 
+    @SuppressWarnings("resource") // This is ok, needed for container reuse
     static Neo4jContainer<?> neo4j = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.19.0-enterprise"))
             .withAdminPassword("password")
             .withLogConsumer(new Slf4jLogConsumer(LOG))
@@ -40,8 +44,8 @@ public class DataTransferTest {
     static void beforeAll() {
         neo4j.start();
         driver = GraphDatabase.driver(neo4j.getBoltUrl(), AUTH_TOKEN);
-        driver.executableQuery("CREATE DATABASE " + SOURCE_DB + " WAIT").execute();
-        driver.executableQuery("CREATE DATABASE " + TARGET_DB + " WAIT").execute();
+        driver.executableQuery("CREATE DATABASE " + SOURCE_DB + " IF NOT EXISTS WAIT").execute();
+        driver.executableQuery("CREATE DATABASE " + TARGET_DB + " IF NOT EXISTS WAIT").execute();
     }
 
     @AfterAll
