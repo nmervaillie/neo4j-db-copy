@@ -14,7 +14,6 @@ class DataTransfer {
 	protected static final Logger LOG = LoggerFactory.getLogger(DataTransfer.class);
 
 	protected static final int WRITER_CONCURRENCY = 4;
-	protected static final int BATCH_SIZE = 5000;
 
     private final DataReader dataReader;
 	private final DataWriter dataWriter;
@@ -29,6 +28,7 @@ class DataTransfer {
 	Mono<Long> copyAllNodesAndRels() {
 		var mappingContext = new MappingContext(10000);
 
+        var batchSize = copyOptions.batchSize();
         ProgressBar nodeProgressBar = new ProgressBar("Nodes", dataReader.getTotalNodeCount());
 		ProgressBar relationshipProgressBar = new ProgressBar("Relationships", dataReader.getTotalRelationshipCount());
 
@@ -36,13 +36,13 @@ class DataTransfer {
 				// ideally we should filter out properties to exclude here
 				// but the nodes are immutable and that would require duplicating the node data structure here
 				// which I don't want to do (yet)
-				.buffer(BATCH_SIZE)
+				.buffer(batchSize)
 				.doOnNext(batch -> nodeProgressBar.updateProgress(batch.size()))
 				.flatMap(this::writeNodes, WRITER_CONCURRENCY)
 				.collectList()
 				.map(mappingContext::add)
 				.flatMap(mappings -> readRels()
-					.buffer(BATCH_SIZE)
+					.buffer(batchSize)
 					.doOnNext(batch -> relationshipProgressBar.updateProgress(batch.size()))
 					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mappings), 1)
 					.reduce(0L, Long::sum)

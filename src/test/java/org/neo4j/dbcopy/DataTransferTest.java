@@ -1,183 +1,140 @@
 package org.neo4j.dbcopy;
 
-import org.junit.jupiter.api.*;
-import org.neo4j.dbcopy.bolt.BoltReader;
-import org.neo4j.dbcopy.bolt.BoltWriter;
-import org.neo4j.driver.*;
+import org.junit.jupiter.api.Test;
+import org.neo4j.driver.internal.InternalNode;
+import org.neo4j.driver.internal.InternalRelationship;
 import org.neo4j.driver.types.Node;
-import org.neo4j.driver.types.Path;
 import org.neo4j.driver.types.Relationship;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.Neo4jContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.utility.DockerImageName;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+import reactor.test.publisher.TestPublisher;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DataTransferTest {
+class DataTransferTest {
 
-    public static final Logger LOG = LoggerFactory.getLogger(DataTransferTest.class);
-    private static final AuthToken AUTH_TOKEN = AuthTokens.basic("neo4j", "password");
-    private static final String SOURCE_DB = "sourcedb";
-    private static final String TARGET_DB = "targetdb";
+    @Test
+    void should_copy_nodes_in_batches() {
 
-    @SuppressWarnings("resource") // This is ok, needed for container reuse
-    static Neo4jContainer<?> neo4j = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.19.0-enterprise"))
-            .withAdminPassword("password")
-            .withLogConsumer(new Slf4jLogConsumer(LOG))
-            .withEnv("NEO4J_ACCEPT_LICENSE_AGREEMENT", "yes")
-            .withPlugins("apoc")
-            .withReuse(true);
+        TestPublisher<Node> nodesPublishers = TestPublisher.create();
+        var writer = new TestDataWriter();
 
-    static Driver driver;
-    private final Session sourceSession = driver.session(SessionConfig.forDatabase(SOURCE_DB));
-    private final Session targetSession = driver.session(SessionConfig.forDatabase(TARGET_DB));
-    DataReader dataReader;
-    DataWriter dataWriter;
+        var transferService = new DataTransfer(
+                    new TestDataReader(nodesPublishers.flux(), Flux.empty()),
+                    writer,
+                    new CopyOptions.Builder().batchSize(3).build());
 
-    @BeforeAll
-    static void beforeAll() {
-        neo4j.start();
-        driver = GraphDatabase.driver(neo4j.getBoltUrl(), AUTH_TOKEN);
-        driver.executableQuery("CREATE DATABASE " + SOURCE_DB + " IF NOT EXISTS WAIT").execute();
-        driver.executableQuery("CREATE DATABASE " + TARGET_DB + " IF NOT EXISTS WAIT").execute();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        driver.close();
-    }
-
-    @BeforeEach
-    void setUp() {
-        sourceSession.run("MATCH (n) DETACH DELETE n;").consume();
-        targetSession.run("MATCH (n) DETACH DELETE n;").consume();
-        dataReader = new BoltReader(driver, SOURCE_DB);
-        dataWriter = new BoltWriter(driver, TARGET_DB);
-    }
-
-    @AfterEach
-    void tearDown() {
-        sourceSession.close();
-        targetSession.close();
-    }
-
-    private List<Node> getAllNodes() {
-        return targetSession.run("MATCH (n) RETURN n").list((rec) -> rec.get(0).asNode());
-    }
-
-    private List<Path> getAllPaths() {
-        return targetSession.run("MATCH p = (n)-[]->() RETURN p").list((rec) -> rec.get("p").asPath());
+        StepVerifier.create(transferService.copyAllNodesAndRels())
+                .then(() -> nodesPublishers.next(node(1)))
+                .then(() -> assertThat(writer.writtenNodes).isEmpty())
+                .then(() -> nodesPublishers.next(node(2), node(3), node(4)))
+                .then(() -> assertThat(writer.writtenNodes).containsExactly(node(1), node(2), node(3)))
+                .then(nodesPublishers::complete)
+                .then(() -> assertThat(writer.writtenNodes).containsExactly(node(1), node(2), node(3), node(4)))
+                .expectNext(0L)
+                .verifyComplete();
     }
 
     @Test
-    void should_copy_a_single_node() {
+    void should_copy_relationships_in_batches() {
 
-        sourceSession.run("CREATE (one:NodeOne) SET one.prop = 123").consume();
+        TestPublisher<Relationship> relsPublishers = TestPublisher.create();
+        var writer = new TestDataWriter();
 
-        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
-        dataTransfer.copyAllNodesAndRels().block();
+        var transferService = new DataTransfer(
+                new TestDataReader(Flux.empty(), relsPublishers.flux()),
+                writer,
+                new CopyOptions.Builder().batchSize(3).build());
 
-        List<Node> nodes = getAllNodes();
-        assertThat(nodes).hasSize(1);
-        Node node = nodes.get(0);
-        assertThat(node.labels()).containsExactly("NodeOne");
-        assertThat(node.asMap()).containsExactly(Map.entry("prop", 123L));
+        StepVerifier.create(transferService.copyAllNodesAndRels())
+                .then(() -> relsPublishers.next(rel(1)))
+                .then(() -> assertThat(writer.writtenNodes).isEmpty())
+                .then(() -> relsPublishers.next(rel(2), rel(3), rel(4)))
+                .then(() -> assertThat(writer.writtenRelationships).containsExactly(rel(1), rel(2), rel(3)))
+                .then(relsPublishers::complete)
+                .then(() -> assertThat(writer.writtenRelationships).containsExactly(rel(1), rel(2), rel(3), rel(4)))
+                .expectNext(4L)
+                .verifyComplete();
     }
 
     @Test
-    void should_copy_node_properties() {
+    void should_handle_empty_streams() {
 
-        sourceSession.run("CREATE (one:NodeOne) SET one.prop=123").consume();
+        TestDataWriter dataWriter = new TestDataWriter();
+        var transferService = new DataTransfer(
+                new TestDataReader(Flux.empty(), Flux.empty()),
+                dataWriter,
+                new CopyOptions.Builder().batchSize(3).build());
 
-        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
-        dataTransfer.copyAllNodesAndRels().block();
+        StepVerifier.create(transferService.copyAllNodesAndRels())
+                .expectNext(0L)
+                .verifyComplete();
 
-        List<Node> nodes = getAllNodes();
-        assertThat(nodes).hasSize(1);
-        Node node = nodes.get(0);
-        assertThat(node.asMap()).containsExactly(Map.entry("prop", 123L));
+        assertThat(dataWriter.writtenNodes).isEmpty();
+        assertThat(dataWriter.writtenRelationships).isEmpty();
     }
 
-    @Test
-    void should_copy_node_with_several_labels() {
-
-        sourceSession.run("CREATE (one:NodeOne:NodeTwo)").consume();
-
-        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
-        dataTransfer.copyAllNodesAndRels().block();
-
-        List<Node> nodes = getAllNodes();
-        assertThat(nodes).hasSize(1);
-        Node node = nodes.get(0);
-        assertThat(node.labels()).containsExactlyInAnyOrder("NodeOne", "NodeTwo");
+    private Node node(int id) {
+        return new InternalNode(id);
     }
 
-    @Test
-    void should_copy_nodes_and_relationships() {
-
-        sourceSession.run("CREATE (one:NodeOne)-[:TO]->(two:NodeTwo)").consume();
-
-        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
-        dataTransfer.copyAllNodesAndRels().block();
-
-        List<Path> paths = getAllPaths();
-        assertThat(paths).hasSize(1);
-        Path path = paths.get(0);
-        assertThat(path.start().labels()).containsExactly("NodeOne");
-        assertThat(path.relationships().iterator().next().type()).isEqualTo("TO");
-        assertThat(path.end().labels()).containsExactly("NodeTwo");
+    private Relationship rel(int id) {
+        return new InternalRelationship(id, 0, 0, "foo");
     }
 
-    @Test
-    void should_copy_relationship_properties() {
+    static class TestDataReader implements DataReader {
+        private final Flux<Node> nodes;
+        private final Flux<Relationship> relationships;
 
-        sourceSession.run("CREATE (one:NodeOne)-[to:TO]->(two:NodeTwo) SET to.value='foo'").consume();
+        public TestDataReader(Flux<Node> nodes, Flux<Relationship> relationships) {
+            this.nodes = nodes;
+            this.relationships = relationships;
+        }
 
-        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, CopyOptions.DEFAULT);
-        dataTransfer.copyAllNodesAndRels().block();
+        @Override
+        public long getTotalNodeCount() {
+            return 0;
+        }
 
-        Relationship rel = getAllPaths().get(0).relationships().iterator().next();
-        assertThat(rel.type()).isEqualTo("TO");
-        assertThat(rel.asMap()).containsExactly(Map.entry("value", "foo"));
+        @Override
+        public long getTotalRelationshipCount() {
+            return 0;
+        }
+
+        @Override
+        public Flux<Node> readNodes() {
+            return nodes;
+        }
+
+        @Override
+        public Flux<Relationship> readRelationships() {
+            return relationships;
+        }
     }
 
-    @Test
-    void should_copy_node_with_excluded_properties() {
-        sourceSession.run("CREATE (one:NodeOne {prop1: 'value1', prop2: 'value2', prop3: 'value3'})").consume();
+    static class TestDataWriter implements DataWriter {
 
-        CopyOptions copyOption = new CopyOptions.Builder()
-                .excludeNodeProperties(Set.of("prop2"))
-                .build();
-        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, copyOption);
+        List<Node> writtenNodes = new ArrayList<>();
+        List<Relationship> writtenRelationships = new ArrayList<>();
 
-        dataTransfer.copyAllNodesAndRels().block();
+        @SuppressWarnings("deprecation")
+        @Override
+        public Flux<MappingContext.Mapping> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
+            var mapping = nodes.stream().map(n -> {
+                writtenNodes.add(n);
+                return new MappingContext.Mapping(n.id(), n.id() + 1000);
+            });
+            return Flux.fromStream(mapping);
+        }
 
-        List<Node> nodes = getAllNodes();
-        assertThat(nodes).hasSize(1);
-        Node node = nodes.get(0);
-        assertThat(node.asMap()).containsEntry("prop1", "value1").containsEntry("prop3", "value3");
-        assertThat(node.asMap()).doesNotContainKeys("prop2");
-    }
-
-    @Test
-    void should_copy_relationship_with_excluded_properties() {
-        sourceSession.run("CREATE (one:NodeOne)-[rel:TO {prop1: 'value1', prop2: 'value2', prop3: 'value3'}]->(two:NodeTwo)").consume();
-
-        CopyOptions copyOption = new CopyOptions.Builder()
-                .excludeRelationshipProperties(Set.of("prop3"))
-                .build();
-        DataTransfer dataTransfer = new DataTransfer(dataReader, dataWriter, copyOption);
-
-        dataTransfer.copyAllNodesAndRels().block();
-
-        Relationship rel = getAllPaths().get(0).relationships().iterator().next();
-        assertThat(rel.asMap()).containsEntry("prop1", "value1").containsEntry("prop2", "value2");
-        assertThat(rel.asMap()).doesNotContainKeys("prop3");
+        @Override
+        public Mono<Long> writeRelationships(List<Relationship> relationships, MappingContext mappingContext, CopyOptions copyOptions) {
+            writtenRelationships.addAll(relationships);
+            return Mono.just((long) relationships.size());
+        }
     }
 }

@@ -31,6 +31,7 @@ public class BoltWriter implements DataWriter {
         this.targetDatabase = targetDatabase;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public Flux<MappingContext.Mapping> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
         return Flux.usingWhen(Mono.fromSupplier(getRxSession()),
