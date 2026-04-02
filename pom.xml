@@ -36,17 +36,19 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <neo4j-java-driver.version>6.0.3</neo4j-java-driver.version>
-        <logback-classic.version>1.5.7</logback-classic.version>
-        <junit-jupiter.version>5.10.3</junit-jupiter.version>
-        <reactor-bom.version>2022.0.2</reactor-bom.version>
+        <neo4j-java-driver.version>6.0.4</neo4j-java-driver.version>
+        <logback-classic.version>1.5.32</logback-classic.version>
+        <junit-jupiter.version>6.1.0-M1</junit-jupiter.version>
+        <reactor-bom.version>2025.0.4</reactor-bom.version>
         <blockhound-junit-platform.version>1.0.3.RELEASE</blockhound-junit-platform.version>
-        <picocli.version>4.7.6</picocli.version>
+        <picocli.version>4.7.7</picocli.version>
         <maven-compiler-plugin-version>3.10.1</maven-compiler-plugin-version>
-        <testcontainers-bom.version>1.20.1</testcontainers-bom.version>
+        <testcontainers-bom.version>2.0.4</testcontainers-bom.version>
         <surefire.version>3.0.0-M7</surefire.version>
         <failsafe.version>3.0.0-M7</failsafe.version>
         <jreleaser.version>1.13.1</jreleaser.version>
+        <mockito-core.version>5.23.0</mockito-core.version>
+        <assertj-core.version>4.0.0-M1</assertj-core.version>
     </properties>
 
     <dependencies>
@@ -83,18 +85,18 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.26.3</version>
+            <version>${assertj-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.13.0</version>
+            <version>${mockito-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>neo4j</artifactId>
+            <artifactId>testcontainers-neo4j</artifactId>
             <scope>test</scope>
         </dependency>
         <!--        <dependency>-->
