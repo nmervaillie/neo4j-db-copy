@@ -1,6 +1,8 @@
 package org.neo4j.dbcopy;
 
 import org.junit.jupiter.api.Test;
+import org.neo4j.dbcopy.io.DataReader;
+import org.neo4j.dbcopy.io.DataWriter;
 import org.neo4j.driver.internal.InternalNode;
 import org.neo4j.driver.internal.InternalRelationship;
 import org.neo4j.driver.types.Node;
@@ -121,18 +123,13 @@ class DataTransferTest {
         List<Node> writtenNodes = new ArrayList<>();
         List<Relationship> writtenRelationships = new ArrayList<>();
 
-        @SuppressWarnings("deprecation")
         @Override
-        public Flux<MappingContext.Mapping> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
-            var mapping = nodes.stream().map(n -> {
-                writtenNodes.add(n);
-                return new MappingContext.Mapping(n.id(), n.id() + 1000);
-            });
-            return Flux.fromStream(mapping);
+        public Mono<Void> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
+            return Mono.fromRunnable(() -> writtenNodes.addAll(nodes));
         }
 
         @Override
-        public Mono<Long> writeRelationships(List<Relationship> relationships, MappingContext mappingContext, CopyOptions copyOptions) {
+        public Mono<Long> writeRelationships(List<Relationship> relationships, CopyOptions copyOptions) {
             writtenRelationships.addAll(relationships);
             return Mono.just((long) relationships.size());
         }

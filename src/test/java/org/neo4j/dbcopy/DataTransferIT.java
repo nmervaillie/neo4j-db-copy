@@ -1,8 +1,13 @@
 package org.neo4j.dbcopy;
 
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
 import org.neo4j.dbcopy.bolt.BoltReader;
 import org.neo4j.dbcopy.bolt.BoltWriter;
+import org.neo4j.dbcopy.io.DataReader;
+import org.neo4j.dbcopy.io.DataWriter;
+import org.neo4j.dbcopy.json.JsonDataReader;
+import org.neo4j.dbcopy.json.JsonDataWriter;
 import org.neo4j.driver.*;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Path;
@@ -49,7 +54,9 @@ public class DataTransferIT {
 
     @AfterAll
     static void afterAll() {
-        driver.close();
+        if (driver != null) {
+            driver.close();
+        }
     }
 
     @BeforeEach
@@ -178,5 +185,40 @@ public class DataTransferIT {
         Relationship rel = getAllPaths().get(0).relationships().iterator().next();
         assertThat(rel.asMap()).containsEntry("prop1", "value1").containsEntry("prop2", "value2");
         assertThat(rel.asMap()).doesNotContainKeys("prop3");
+    }
+
+    @Test
+    void should_round_trip_through_jsonl(@TempDir java.nio.file.Path tempDir) throws Exception {
+        sourceSession.run("""
+                CREATE (one:NodeOne {name: 'Alice', active: true, tags: ['friend', 'colleague'], created: date('2024-01-15')})
+                CREATE (two:NodeTwo {count: 2})
+                CREATE (one)-[:TO {since: 2020, close: false}]->(two)
+                """).consume();
+
+        java.nio.file.Path jsonFile = tempDir.resolve("graph.jsonl");
+
+        try (JsonDataWriter jsonWriter = new JsonDataWriter(jsonFile)) {
+            new DataTransfer(new BoltReader(driver, SOURCE_DB), jsonWriter, CopyOptions.DEFAULT)
+                    .copyAllNodesAndRels()
+                    .block();
+        }
+
+        new DataTransfer(new JsonDataReader(jsonFile), new BoltWriter(driver, TARGET_DB), CopyOptions.DEFAULT)
+                .copyAllNodesAndRels()
+                .block();
+
+        List<Node> nodes = getAllNodes();
+        assertThat(nodes).hasSize(2);
+        assertThat(nodes).anySatisfy(node -> {
+            if (node.hasLabel("NodeOne")) {
+                assertThat(node.asMap()).containsEntry("name", "Alice")
+                        .containsEntry("active", true)
+                        .containsEntry("tags", List.of("friend", "colleague"));
+            }
+        });
+
+        Relationship rel = getAllPaths().get(0).relationships().iterator().next();
+        assertThat(rel.type()).isEqualTo("TO");
+        assertThat(rel.asMap()).containsEntry("since", 2020L).containsEntry("close", false);
     }
 }

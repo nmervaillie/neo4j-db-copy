@@ -2,9 +2,9 @@
 
 image:https://github.com/nmervaillie/neo4j-db-copy/actions/workflows/ci.yml/badge.svg["CI", link="https://github.com/nmervaillie/neo4j-db-copy/actions/workflows/ci.yml"]
 
-A development tool useful to copy the data from a Neo4j database to another Neo4j database.
+A development tool useful to copy the data from a Neo4j database to another Neo4j database, or to and from a JSONL file.
 Databases can be local or remote.
-As the copy is done through the Neo4j driver, no admin access to Neo4j is required.
+As the copy is done through the Neo4j driver or a local JSONL export, no admin access to Neo4j is required.
 
 This is useful to copy things around, for example test/reference data from an environment to another.
 
@@ -24,15 +24,15 @@ The resulting app can be found in the `target` directory.
 
 [source,bash]
 ----
-Usage: neo4j-db-copy [-hV] [-lock] -sp -tp -sa=<sourceAddress>
-                     -sd=<sourceDatabase> [-su=<sourceUserName>]
-                     -ta=<targetAddress> -td=<targetDatabase>
+Usage: neo4j-db-copy [-hV] [-lock] -sa=<sourceAddress>
+                     [-sd=<sourceDatabase>] [-sp] [-su=<sourceUserName>]
+                     -ta=<targetAddress> [-td=<targetDatabase>] [-tp]
                      [-tu=<targetUserName>] [-enp=<excludeNodeProperties>[,
                      <excludeNodeProperties>...]]...
                      [-erp=<excludeRelationshipProperties>[,
                      <excludeRelationshipProperties>...]]...
-Copy the content of a Neo4j database to another Neo4j database, via the
-network, through the bolt protocol.
+Copy the content of a Neo4j database to another Neo4j database, or to/from a
+JSONL file.
       -enp, --exclude-node-properties=<excludeNodeProperties>[,
         <excludeNodeProperties>...]
                   Comma-separated list of node properties to exclude from the
@@ -44,22 +44,62 @@ network, through the bolt protocol.
   -h, --help      Show this help message and exit.
       -lock, --lock-source-database
                   Set the source database to read-only mode before copying
+                    (only valid for bolt/neo4j source)
       -sa, --source-address=<sourceAddress>
-                  The source database address (ex: neo4j+s://my-server:7687)
+                  The source address: bolt/neo4j URI for Neo4j, or
+                    file:///path/to/file.jsonl for JSONL
       -sd, --source-database=<sourceDatabase>
-                  The source database to connect to.
+                  The source database to connect to (used only for bolt/neo4j
+                    URIs).
       -sp, --source-password
-                  The source database password to connect with
+                  The source database password to connect with (used only for
+                    bolt/neo4j URIs)
       -su, --source-username=<sourceUserName>
-                  The source database username to connect as (default: neo4j)
+                  The source database username to connect as (default: neo4j,
+                    used only for bolt/neo4j URIs)
       -ta, --target-address=<targetAddress>
-                  The target database address (ex: neo4j+s://my-server:7687)
+                  The target address: bolt/neo4j URI for Neo4j, or
+                    file:///path/to/file.jsonl for JSONL
       -td, --target-database=<targetDatabase>
-                  The target database to connect to.
+                  The target database to connect to (used only for bolt/neo4j
+                    URIs).
       -tp, --target-password
-                  The target database password to connect with
+                  The target database password to connect with (used only for
+                    bolt/neo4j URIs)
       -tu, --target-username=<targetUserName>
-                  The target database username to connect as (default: neo4j)
+                  The target database username to connect as (default: neo4j,
+                    used only for bolt/neo4j URIs)
   -V, --version   Print version information and exit.
 ----
 
+Bolt credentials and database names are required only for bolt/neo4j endpoints.
+`file:` endpoints are local JSONL files and do not use Neo4j credentials.
+
+The JSON export format is JSONL: one JSON object per line.
+Files ending in `.gz` are read and written as gzip-compressed JSONL.
+Only `file:` URIs are supported for JSON import/export.
+
+Examples:
+
+[source,bash]
+----
+# Neo4j -> Neo4j
+neo4j-db-copy \
+  -sa neo4j+s://source.example:7687 -su neo4j -sp -sd sourcedb \
+  -ta neo4j+s://target.example:7687 -tu neo4j -tp -td targetdb
+
+# Neo4j -> JSONL
+neo4j-db-copy \
+  -sa neo4j+s://source.example:7687 -su neo4j -sp -sd sourcedb \
+  -ta file:///tmp/export.jsonl
+
+# Neo4j -> compressed JSONL
+neo4j-db-copy \
+  -sa neo4j+s://source.example:7687 -su neo4j -sp -sd sourcedb \
+  -ta file:///tmp/export.jsonl.gz
+
+# compressed JSONL -> Neo4j
+neo4j-db-copy \
+  -sa file:///tmp/export.jsonl.gz \
+  -ta neo4j+s://target.example:7687 -tu neo4j -tp -td targetdb
+----

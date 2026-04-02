@@ -1,5 +1,7 @@
 package org.neo4j.dbcopy;
 
+import org.neo4j.dbcopy.io.DataReader;
+import org.neo4j.dbcopy.io.DataWriter;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Relationship;
 import org.slf4j.Logger;
@@ -26,8 +28,6 @@ class DataTransfer {
     }
 
 	Mono<Long> copyAllNodesAndRels() {
-		var mappingContext = new MappingContext(10000);
-
         var batchSize = copyOptions.batchSize();
         ProgressBar nodeProgressBar = new ProgressBar("Nodes", dataReader.getTotalNodeCount());
 		ProgressBar relationshipProgressBar = new ProgressBar("Relationships", dataReader.getTotalRelationshipCount());
@@ -39,11 +39,10 @@ class DataTransfer {
 				.buffer(batchSize)
 				.doOnNext(batch -> nodeProgressBar.updateProgress(batch.size()))
 				.flatMap(this::writeNodes, WRITER_CONCURRENCY)
-				.doOnNext(mappingContext::add)
 				.then(readRels()
 					.buffer(batchSize)
 					.doOnNext(batch -> relationshipProgressBar.updateProgress(batch.size()))
-					.flatMap((List<Relationship> relationships) -> writeRels(relationships, mappingContext), 1)
+					.flatMap(this::writeRels, 1)
 					.reduce(0L, Long::sum)
 				)
 				.doOnSuccess(it -> LOG.info("Relationships writing complete - {} relationships written", it));
@@ -57,12 +56,12 @@ class DataTransfer {
 		return dataReader.readRelationships();
 	}
 
-	private Flux<MappingContext.Mapping> writeNodes(List<Node> nodes) {
+	private Mono<Void> writeNodes(List<Node> nodes) {
 		return dataWriter.writeNodes(nodes, copyOptions);
 	}
 
-	private Mono<Long> writeRels(List<Relationship> relationships, MappingContext mappingContext) {
-		return dataWriter.writeRelationships(relationships, mappingContext, copyOptions);
+	private Mono<Long> writeRels(List<Relationship> relationships) {
+		return dataWriter.writeRelationships(relationships, copyOptions);
 	}
 
 }

@@ -1,8 +1,7 @@
 package org.neo4j.dbcopy.bolt;
 
 import org.neo4j.dbcopy.CopyOptions;
-import org.neo4j.dbcopy.DataWriter;
-import org.neo4j.dbcopy.MappingContext;
+import org.neo4j.dbcopy.io.DataWriter;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.reactivestreams.ReactiveResult;
@@ -15,6 +14,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -25,6 +25,7 @@ public class BoltWriter implements DataWriter {
 
     private final Driver targetDriver;
     private final String targetDatabase;
+    private final Map<Long, Long> nodeIdMappings = new ConcurrentHashMap<>(10000);
 
     public BoltWriter(Driver targetDriver, String targetDatabase) {
         this.targetDriver = targetDriver;
@@ -33,7 +34,7 @@ public class BoltWriter implements DataWriter {
 
     @SuppressWarnings("deprecation")
     @Override
-    public Flux<MappingContext.Mapping> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
+    public Mono<Void> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
         return Flux.usingWhen(Mono.fromSupplier(getRxSession()),
                         session -> session.executeWrite(tx -> {
                             List<Map<String, Object>> nodeData = nodes.stream()
@@ -52,16 +53,17 @@ public class BoltWriter implements DataWriter {
                                     parameters("inputList", nodeData))).flatMapMany(ReactiveResult::records);
                         }),
                         ReactiveSession::close)
-                .map(r -> new MappingContext.Mapping(r.get("sourceNodeId").asLong(), r.get("targetNodeId").asLong()));
+                .doOnNext(record -> nodeIdMappings.put(record.get("sourceNodeId").asLong(), record.get("targetNodeId").asLong()))
+                .then();
     }
 
     @Override
     @SuppressWarnings("deprecation")
-    public Mono<Long> writeRelationships(List<Relationship> relationships, MappingContext mappingContext, CopyOptions copyOptions) {
+    public Mono<Long> writeRelationships(List<Relationship> relationships, CopyOptions copyOptions) {
         var relData = relationships.stream()
                 .map(rel -> Map.of(
-                        "s", mappingContext.get(rel.startNodeId()),
-                        "t", mappingContext.get(rel.endNodeId()),
+                        "s", mappedNodeId(rel.startNodeId()),
+                        "t", mappedNodeId(rel.endNodeId()),
                         "type", rel.type(),
                         "properties", filterProperties(rel.asMap(), copyOptions.getRelationshipPropertiesToExclude())))
                 .toList();
@@ -78,6 +80,14 @@ public class BoltWriter implements DataWriter {
                 .reduce(0L, Long::sum);
     }
 
+    private long mappedNodeId(long sourceNodeId) {
+        Long targetNodeId = nodeIdMappings.get(sourceNodeId);
+        if (targetNodeId == null) {
+            throw new IllegalStateException("Unable to find source node with id " + sourceNodeId);
+        }
+        return targetNodeId;
+    }
+
     protected Supplier<ReactiveSession> getRxSession() {
         return () -> targetDriver.session(ReactiveSession.class, SessionConfig.forDatabase(targetDatabase));
     }
@@ -90,5 +100,10 @@ public class BoltWriter implements DataWriter {
         return properties.entrySet().stream()
                 .filter(entry -> !propertiesToExclude.contains(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    @Override
+    public void close() {
+        targetDriver.close();
     }
 }

@@ -8,7 +8,7 @@ import org.neo4j.driver.exceptions.NoSuchRecordException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class LockingDatabaseStateManager implements DatabaseStateManager {
+public class LockingDatabaseStateManager implements DatabaseStateManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(LockingDatabaseStateManager.class);
 

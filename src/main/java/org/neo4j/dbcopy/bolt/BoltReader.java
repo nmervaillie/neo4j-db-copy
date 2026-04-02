@@ -1,6 +1,8 @@
 package org.neo4j.dbcopy.bolt;
 
-import org.neo4j.dbcopy.DataReader;
+import org.neo4j.dbcopy.DatabaseStateManager;
+import org.neo4j.dbcopy.LockingDatabaseStateManager;
+import org.neo4j.dbcopy.io.DataReader;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.reactivestreams.ReactiveResult;
@@ -58,5 +60,19 @@ public class BoltReader implements DataReader {
         try (var session = driver.session(SessionConfig.forDatabase(databaseName))) {
             return session.run("MATCH ()-[r]->() RETURN count(r) AS count").single().get("count").asLong();
         }
+    }
+
+    @Override
+    public DatabaseStateManager createStateManager(boolean lockSourceDatabase) {
+        if (!lockSourceDatabase) {
+            return new DatabaseStateManager() {
+            };
+        }
+        return new LockingDatabaseStateManager(driver, databaseName);
+    }
+
+    @Override
+    public void close() {
+        driver.close();
     }
 }
