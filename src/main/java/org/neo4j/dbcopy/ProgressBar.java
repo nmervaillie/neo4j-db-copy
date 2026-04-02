@@ -14,7 +14,7 @@ public class ProgressBar {
 
     public void updateProgress(int batchSize) {
         processed += batchSize;
-        int progress = (int) ((processed / (double) total) * 100);
+        int progress = total == 0 ? 100 : (int) ((processed / (double) total) * 100);
         StringBuilder bar = new StringBuilder("[");
 
         for (int i = 0; i < 50; i++) {

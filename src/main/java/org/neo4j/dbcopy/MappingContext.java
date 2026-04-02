@@ -8,21 +8,26 @@ public class MappingContext {
 
     public record Mapping(long sourceNodeId, long targetNodeId){}
 
-    private static Map<Long, Long> MAPPINGS;
+    private final Map<Long, Long> mappings;
 
     public MappingContext(int initialCapacity) {
-        MAPPINGS = new ConcurrentHashMap<>(initialCapacity);
+        this.mappings = new ConcurrentHashMap<>(initialCapacity);
     }
 
     public MappingContext add(List<Mapping> mappings) {
         for (Mapping mapping : mappings) {
-            MAPPINGS.put(mapping.sourceNodeId, mapping.targetNodeId);
+            add(mapping);
         }
         return this;
     }
 
+    public MappingContext add(Mapping mapping) {
+        mappings.put(mapping.sourceNodeId, mapping.targetNodeId);
+        return this;
+    }
+
     public Long get(Long sourceId) {
-        var targetId = MAPPINGS.get(sourceId);
+        var targetId = mappings.get(sourceId);
         if (targetId == null) {
             throw new IllegalStateException("Unable to find source node with id " + sourceId);
         }
