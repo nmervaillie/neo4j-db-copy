@@ -50,7 +50,7 @@
         <jreleaser.version>1.13.1</jreleaser.version>
         <mockito-core.version>5.23.0</mockito-core.version>
         <assertj-core.version>4.0.0-M1</assertj-core.version>
-        <jackson.version>2.20.1</jackson.version>
+        <jackson.version>2.21.2</jackson.version>
     </properties>
 
     <dependencies>
