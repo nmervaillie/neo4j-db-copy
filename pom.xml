@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j.dbcopy</groupId>
     <artifactId>neo4j-db-copy</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>${revision}</version>
 
     <description>Neo4j data copy tool, through the bolt protocol</description>
     <url>https://github.com/nmervaillie/neo4j-db-copy</url>
@@ -32,6 +32,7 @@
     </developers>
 
     <properties>
+        <revision>1.0-SNAPSHOT</revision>
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -227,7 +228,7 @@
                             <github>
                                 <owner>nmervaillie</owner>
                                 <overwrite>true</overwrite>
-                                <tagName>{{projectVersion}}</tagName>
+                                <tagName>v{{projectVersion}}</tagName>
                                 <releaseName>Release {{projectVersion}}</releaseName>
                             </github>
                         </release>
