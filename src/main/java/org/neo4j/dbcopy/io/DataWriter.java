@@ -3,15 +3,20 @@ package org.neo4j.dbcopy.io;
 import org.neo4j.dbcopy.CopyOptions;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Relationship;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
-import java.util.List;
 
 public interface DataWriter extends AutoCloseable {
 
-    Mono<Void> writeNodes(List<Node> nodes, CopyOptions copyOptions);
+    /**
+     * returns a flux of updated node count
+     */
+    Flux<Long> writeNodes(Flux<Node> nodes, CopyOptions copyOptions);
 
-    Mono<Long> writeRelationships(List<Relationship> relationships, CopyOptions copyOptions);
+    /**
+     * returns a flux of updated relationships count
+     */
+    Flux<Long> writeRelationships(Flux<Relationship> relationships, CopyOptions copyOptions);
 
     @Override
     default void close() throws Exception {

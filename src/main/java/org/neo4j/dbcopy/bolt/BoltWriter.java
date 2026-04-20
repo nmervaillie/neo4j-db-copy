@@ -22,6 +22,7 @@ import java.util.stream.StreamSupport;
 import static org.neo4j.driver.Values.parameters;
 
 public class BoltWriter implements DataWriter {
+    private static final int NODE_WRITE_CONCURRENCY = 4;
 
     private final Driver targetDriver;
     private final String targetDatabase;
@@ -32,9 +33,23 @@ public class BoltWriter implements DataWriter {
         this.targetDatabase = targetDatabase;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    public Mono<Void> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
+    public Flux<Long> writeNodes(Flux<Node> nodes, CopyOptions copyOptions) {
+        return nodes.buffer(copyOptions.batchSize())
+                .flatMap(batch -> writeNodeBatch(batch, copyOptions), NODE_WRITE_CONCURRENCY);
+    }
+
+    @Override
+    public Flux<Long> writeRelationships(Flux<Relationship> relationships, CopyOptions copyOptions) {
+        return relationships.buffer(copyOptions.batchSize())
+                .concatMap(batch -> writeRelationshipBatch(batch, copyOptions));
+    }
+
+    @SuppressWarnings("deprecation")
+    private Mono<Long> writeNodeBatch(List<Node> nodes, CopyOptions copyOptions) {
+        if (nodes.isEmpty()) {
+            return Mono.empty();
+        }
         return Flux.usingWhen(Mono.fromSupplier(getRxSession()),
                         session -> session.executeWrite(tx -> {
                             List<Map<String, Object>> nodeData = nodes.stream()
@@ -54,12 +69,14 @@ public class BoltWriter implements DataWriter {
                         }),
                         ReactiveSession::close)
                 .doOnNext(record -> nodeIdMappings.put(record.get("sourceNodeId").asLong(), record.get("targetNodeId").asLong()))
-                .then();
+                .count();
     }
 
-    @Override
     @SuppressWarnings("deprecation")
-    public Mono<Long> writeRelationships(List<Relationship> relationships, CopyOptions copyOptions) {
+    private Mono<Long> writeRelationshipBatch(List<Relationship> relationships, CopyOptions copyOptions) {
+        if (relationships.isEmpty()) {
+            return Mono.empty();
+        }
         var relData = relationships.stream()
                 .map(rel -> Map.of(
                         "s", mappedNodeId(rel.startNodeId()),
@@ -77,7 +94,7 @@ public class BoltWriter implements DataWriter {
                                 parameters("inputList", relData))).flatMapMany(ReactiveResult::records)),
                         ReactiveSession::close)
                 .map(record -> record.get(0).asLong())
-                .reduce(0L, Long::sum);
+                .single(0L);
     }
 
     private long mappedNodeId(long sourceNodeId) {

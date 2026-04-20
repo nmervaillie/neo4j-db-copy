@@ -6,6 +6,7 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Relationship;
+import reactor.core.publisher.Flux;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,8 +46,8 @@ class JsonDataReaderWriterTest {
         ));
 
         try (JsonDataWriter writer = new JsonDataWriter(jsonFile)) {
-            writer.writeNodes(List.of(node), CopyOptions.DEFAULT).block();
-            writer.writeRelationships(List.of(relationship), CopyOptions.DEFAULT).block();
+            writer.writeNodes(Flux.just(node), CopyOptions.DEFAULT).blockLast();
+            writer.writeRelationships(Flux.just(relationship), CopyOptions.DEFAULT).blockLast();
         }
 
         List<Node> nodes;
@@ -81,8 +82,8 @@ class JsonDataReaderWriterTest {
         Relationship relationship = new TestRelationship(7L, 1L, 1L, "KNOWS", Map.of("since", Values.value(2020L)));
 
         try (JsonDataWriter writer = new JsonDataWriter(jsonFile)) {
-            writer.writeNodes(List.of(node), CopyOptions.DEFAULT).block();
-            writer.writeRelationships(List.of(relationship), CopyOptions.DEFAULT).block();
+            writer.writeNodes(Flux.just(node), CopyOptions.DEFAULT).blockLast();
+            writer.writeRelationships(Flux.just(relationship), CopyOptions.DEFAULT).blockLast();
         }
 
         List<String> lines;
@@ -103,8 +104,8 @@ class JsonDataReaderWriterTest {
         Relationship relationship = new TestRelationship(7L, 1L, 1L, "KNOWS", Map.of("since", Values.value(2020L)));
 
         try (JsonDataWriter writer = new JsonDataWriter(jsonFile)) {
-            writer.writeNodes(List.of(node), CopyOptions.DEFAULT).block();
-            writer.writeRelationships(List.of(relationship), CopyOptions.DEFAULT).block();
+            writer.writeNodes(Flux.just(node), CopyOptions.DEFAULT).blockLast();
+            writer.writeRelationships(Flux.just(relationship), CopyOptions.DEFAULT).blockLast();
         }
 
         List<Node> nodes;
@@ -167,7 +168,7 @@ class JsonDataReaderWriterTest {
         ));
 
         try (JsonDataWriter writer = new JsonDataWriter(jsonFile)) {
-            assertThatThrownBy(() -> writer.writeNodes(List.of(node), CopyOptions.DEFAULT).block())
+            assertThatThrownBy(() -> writer.writeNodes(Flux.just(node), CopyOptions.DEFAULT).blockLast())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Unsupported property value type");
         }

@@ -124,14 +124,21 @@ class DataTransferTest {
         List<Relationship> writtenRelationships = new ArrayList<>();
 
         @Override
-        public Mono<Void> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
-            return Mono.fromRunnable(() -> writtenNodes.addAll(nodes));
+        public Flux<Long> writeNodes(Flux<Node> nodes, CopyOptions copyOptions) {
+            return nodes.buffer(copyOptions.batchSize())
+                    .concatMap(batch -> Mono.fromCallable(() -> {
+                        writtenNodes.addAll(batch);
+                        return (long) batch.size();
+                    }));
         }
 
         @Override
-        public Mono<Long> writeRelationships(List<Relationship> relationships, CopyOptions copyOptions) {
-            writtenRelationships.addAll(relationships);
-            return Mono.just((long) relationships.size());
+        public Flux<Long> writeRelationships(Flux<Relationship> relationships, CopyOptions copyOptions) {
+            return relationships.buffer(copyOptions.batchSize())
+                    .concatMap(batch -> Mono.fromCallable(() -> {
+                        writtenRelationships.addAll(batch);
+                        return (long) batch.size();
+                    }));
         }
     }
 }

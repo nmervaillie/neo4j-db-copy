@@ -8,6 +8,7 @@ import org.neo4j.dbcopy.io.DataWriter;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.types.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
@@ -45,21 +46,28 @@ public final class JsonDataWriter implements DataWriter, AutoCloseable {
     }
 
     @Override
-    public Mono<Void> writeNodes(List<Node> nodes, CopyOptions copyOptions) {
-        return Mono.fromRunnable(() -> {
-            try {
-                for (Node node : nodes) {
-                    writeNode(node);
-                }
-                json.flush();
-            } catch (IOException e) {
-                throw new UncheckedIOException("Failed to write node batch to JSON export", e);
-            }
-        });
+    public Flux<Long> writeNodes(Flux<Node> nodes, CopyOptions copyOptions) {
+        return nodes.buffer(copyOptions.batchSize())
+                .concatMap(this::writeNodeBatch);
     }
 
     @Override
-    public Mono<Long> writeRelationships(List<Relationship> relationships, CopyOptions copyOptions) {
+    public Flux<Long> writeRelationships(Flux<Relationship> relationships, CopyOptions copyOptions) {
+        return relationships.buffer(copyOptions.batchSize())
+                .concatMap(this::writeRelationshipBatch);
+    }
+
+    private Mono<Long> writeNodeBatch(List<Node> nodes) {
+        return Mono.fromCallable(() -> {
+            for (Node node : nodes) {
+                writeNode(node);
+            }
+            json.flush();
+            return (long) nodes.size();
+        }).onErrorMap(IOException.class, e -> new UncheckedIOException("Failed to write node batch to JSON export", e));
+    }
+
+    private Mono<Long> writeRelationshipBatch(List<Relationship> relationships) {
         return Mono.fromCallable(() -> {
             for (Relationship relationship : relationships) {
                 writeRelationship(relationship);
@@ -69,6 +77,7 @@ public final class JsonDataWriter implements DataWriter, AutoCloseable {
         }).onErrorMap(IOException.class, e -> new UncheckedIOException("Failed to write relationship batch to JSON export", e));
     }
 
+    @SuppressWarnings("deprecation")
     private void writeNode(Node node) throws IOException {
         json.writeStartObject();
 
@@ -98,6 +107,7 @@ public final class JsonDataWriter implements DataWriter, AutoCloseable {
         json.writeEndObject();
     }
 
+    @SuppressWarnings("deprecation")
     private void writeRelationship(Relationship rel) throws IOException {
         json.writeStartObject();
 
