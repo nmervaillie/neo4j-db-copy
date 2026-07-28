@@ -8,6 +8,8 @@ import org.neo4j.driver.reactivestreams.ReactiveResult;
 import org.neo4j.driver.reactivestreams.ReactiveSession;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Relationship;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -22,6 +24,8 @@ import java.util.stream.StreamSupport;
 import static org.neo4j.driver.Values.parameters;
 
 public class BoltWriter implements DataWriter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BoltWriter.class);
     private static final int NODE_WRITE_CONCURRENCY = 4;
 
     private final Driver targetDriver;
@@ -32,6 +36,7 @@ public class BoltWriter implements DataWriter {
         this.targetDriver = targetDriver;
         this.targetDatabase = targetDatabase;
         verifyDatabaseAccessible();
+        LOG.info("Connected to target database '{}'", targetDatabase);
     }
 
     @Override

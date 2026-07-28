@@ -4,6 +4,7 @@ import org.neo4j.dbcopy.io.DataReader;
 import org.neo4j.dbcopy.io.DataReaderFactory;
 import org.neo4j.dbcopy.io.DataWriter;
 import org.neo4j.dbcopy.io.DataWriterFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -155,6 +156,8 @@ class DbCopyCli implements Callable<Integer> {
     }
 
     public static void main(String... args) {
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
         int exitCode = new CommandLine(new DbCopyCli()).execute(args);
         System.exit(exitCode);
     }

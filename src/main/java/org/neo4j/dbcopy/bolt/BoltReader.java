@@ -27,6 +27,7 @@ public class BoltReader implements DataReader {
         this.driver = driver;
         this.databaseName = databaseName;
         verifyDatabaseAccessible();
+        LOG.info("Connected to source database '{}'", databaseName);
     }
 
     @Override
