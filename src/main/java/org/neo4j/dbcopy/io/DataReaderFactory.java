@@ -27,7 +27,11 @@ public final class DataReaderFactory extends EndpointFactorySupport {
                 .withFetchSize(5000)
                 .build();
         Driver driver = GraphDatabase.driver(sourceAddress, AuthTokens.basic(sourceUserName, sourcePassword), config);
-        driver.verifyConnectivity();
-        return new BoltReader(driver, sourceDatabase);
+        try {
+            return new BoltReader(driver, sourceDatabase);
+        } catch (RuntimeException e) {
+            closeQuietly(driver);
+            throw userFriendlyBoltException(sourceAddress, sourceDatabase, e);
+        }
     }
 }

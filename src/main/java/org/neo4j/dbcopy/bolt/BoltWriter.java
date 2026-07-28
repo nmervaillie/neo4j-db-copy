@@ -31,6 +31,7 @@ public class BoltWriter implements DataWriter {
     public BoltWriter(Driver targetDriver, String targetDatabase) {
         this.targetDriver = targetDriver;
         this.targetDatabase = targetDatabase;
+        verifyDatabaseAccessible();
     }
 
     @Override
@@ -107,6 +108,13 @@ public class BoltWriter implements DataWriter {
 
     protected Supplier<ReactiveSession> getRxSession() {
         return () -> targetDriver.session(ReactiveSession.class, SessionConfig.forDatabase(targetDatabase));
+    }
+
+    private void verifyDatabaseAccessible() {
+        targetDriver.verifyConnectivity();
+        try (var session = targetDriver.session(SessionConfig.forDatabase(targetDatabase))) {
+            session.run("RETURN 1").consume();
+        }
     }
 
     private static List<String> labels(Node node) {

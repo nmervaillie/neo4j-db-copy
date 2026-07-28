@@ -1,14 +1,17 @@
 package org.neo4j.dbcopy;
 
 import org.junit.jupiter.api.Test;
+import org.neo4j.dbcopy.io.DataReaderFactory;
 import picocli.CommandLine;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DbCopyCliTest {
 
@@ -65,6 +68,15 @@ class DbCopyCliTest {
 
         assertThat(result.exitCode).isEqualTo(1);
         assertThat(result.err).contains("--target-password is required");
+    }
+
+    @Test
+    @SuppressWarnings("resource")
+    void should_report_friendly_source_connection_errors() {
+        assertThatThrownBy(() -> new DataReaderFactory()
+                .createReader(URI.create("neo4j://127.0.0.1:1"), "neo4j", "password", "neo4j"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to connect to the Neo4j server");
     }
 
     @Test

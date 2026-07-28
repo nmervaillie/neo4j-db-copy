@@ -26,6 +26,7 @@ public class BoltReader implements DataReader {
     public BoltReader(Driver driver, String databaseName) {
         this.driver = driver;
         this.databaseName = databaseName;
+        verifyDatabaseAccessible();
     }
 
     @Override
@@ -48,6 +49,13 @@ public class BoltReader implements DataReader {
 
     private Supplier<ReactiveSession> getRxSession() {
         return () -> driver.session(ReactiveSession.class, SessionConfig.forDatabase(databaseName));
+    }
+
+    private void verifyDatabaseAccessible() {
+        driver.verifyConnectivity();
+        try (var session = driver.session(SessionConfig.forDatabase(databaseName))) {
+            session.run("RETURN 1").consume();
+        }
     }
 
     public long getTotalNodeCount() {

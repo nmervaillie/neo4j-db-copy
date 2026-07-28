@@ -23,7 +23,11 @@ public final class DataWriterFactory extends EndpointFactorySupport {
         requireOption("--target-database", targetDatabase);
 
         Driver driver = GraphDatabase.driver(targetAddress, AuthTokens.basic(targetUserName, targetPassword));
-        driver.verifyConnectivity();
-        return new BoltWriter(driver, targetDatabase);
+        try {
+            return new BoltWriter(driver, targetDatabase);
+        } catch (RuntimeException e) {
+            closeQuietly(driver);
+            throw userFriendlyBoltException(targetAddress, targetDatabase, e);
+        }
     }
 }
