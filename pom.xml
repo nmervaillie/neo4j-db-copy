@@ -237,6 +237,14 @@
 								<overwrite>true</overwrite>
 								<tagName>v{{projectVersion}}</tagName>
 								<releaseName>Release {{projectVersion}}</releaseName>
+								<changelog>
+									<formatted>ALWAYS</formatted>
+									<preset>conventional-commits</preset>
+									<format>- {{#commitIsConventional}}{{#conventionalCommitIsBreakingChange}}🚨 {{/conventionalCommitIsBreakingChange}}{{#conventionalCommitScope}}**{{conventionalCommitScope}}**: {{/conventionalCommitScope}}{{conventionalCommitDescription}}{{#conventionalCommitBreakingChangeContent}} - *{{conventionalCommitBreakingChangeContent}}*{{/conventionalCommitBreakingChangeContent}}{{/commitIsConventional}}{{^commitIsConventional}}{{commitTitle}}{{/commitIsConventional}}{{#commitHasIssues}}, closes{{#commitIssues}} {{issue}}{{/commitIssues}}{{/commitHasIssues}}</format>
+									<contributors>
+										<enabled>false</enabled>
+									</contributors>
+								</changelog>
 							</github>
 						</release>
 						<distributions>
