@@ -1,7 +1,10 @@
 package org.neo4j.dbcopy;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.neo4j.dbcopy.bolt.BoltWriter;
 import org.neo4j.dbcopy.io.DataReaderFactory;
 import org.neo4j.dbcopy.io.DataWriter;
 import org.neo4j.dbcopy.io.DataWriterFactory;
@@ -100,5 +103,36 @@ public class EndpointFactoryIT {
                 .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", existingDatabase, true)) {
             assertThat(writer).isNotNull();
         }
+    }
+
+    @Test
+    void should_warn_when_target_database_is_not_empty() throws Exception {
+        String database = "nonempty-db-" + UUID.randomUUID();
+
+        try (DataWriter writer = new DataWriterFactory()
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", database, true)) {
+            assertThat(writer).isNotNull();
+        }
+
+        var driver = GraphDatabase.driver(neo4j.getBoltUrl(), AUTH_TOKEN);
+        try (Session session = driver.session(SessionConfig.forDatabase(database))) {
+            session.run("CREATE (n:Marker)").consume();
+        }
+        driver.close();
+
+        var logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(BoltWriter.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try (DataWriter writer = new DataWriterFactory()
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", database, false)) {
+            assertThat(writer).isNotNull();
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertThat(appender.list)
+                .anySatisfy(event -> assertThat(event.getFormattedMessage())
+                        .contains("is not empty"));
     }
 }

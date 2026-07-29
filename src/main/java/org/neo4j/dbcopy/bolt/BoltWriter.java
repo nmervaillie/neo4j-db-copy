@@ -119,6 +119,9 @@ public class BoltWriter implements DataWriter {
         targetDriver.verifyConnectivity();
         try (var session = targetDriver.session(SessionConfig.forDatabase(targetDatabase))) {
             session.run("RETURN 1").consume();
+            if (!session.run("MATCH (n) RETURN n LIMIT 1").list().isEmpty()) {
+                LOG.warn("Target database '{}' is not empty - copying data on top", targetDatabase);
+            }
         }
     }
 
