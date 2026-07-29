@@ -24,15 +24,19 @@ The resulting app can be found in the `target` directory.
 
 [source,bash]
 ----
-Usage: neo4j-db-copy [-hV] [-lock] -sa=<sourceAddress>
-                     [-sd=<sourceDatabase>] [-sp] [-su=<sourceUserName>]
-                     -ta=<targetAddress> [-td=<targetDatabase>] [-tp]
-                     [-tu=<targetUserName>] [-enp=<excludeNodeProperties>[,
+Usage: neo4j-db-copy [-hV] [--create-target-database] [-lock] [-sp] [-tp]
+                     -sa=<sourceAddress> [-sd=<sourceDatabase>]
+                     [-su=<sourceUserName>] -ta=<targetAddress>
+                     [-td=<targetDatabase>] [-tu=<targetUserName>]
+                     [-enp=<excludeNodeProperties>[,
                      <excludeNodeProperties>...]]...
                      [-erp=<excludeRelationshipProperties>[,
                      <excludeRelationshipProperties>...]]...
 Copy the content of a Neo4j database to another Neo4j database, or to/from a
 JSONL file.
+      --create-target-database
+                  Create the target database if it does not exist (only valid
+                    for bolt/neo4j targets)
       -enp, --exclude-node-properties=<excludeNodeProperties>[,
         <excludeNodeProperties>...]
                   Comma-separated list of node properties to exclude from the

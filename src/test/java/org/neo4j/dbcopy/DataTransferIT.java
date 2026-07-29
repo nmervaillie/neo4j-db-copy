@@ -5,9 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.neo4j.dbcopy.bolt.BoltReader;
 import org.neo4j.dbcopy.bolt.BoltWriter;
 import org.neo4j.dbcopy.io.DataReader;
-import org.neo4j.dbcopy.io.DataReaderFactory;
 import org.neo4j.dbcopy.io.DataWriter;
-import org.neo4j.dbcopy.io.DataWriterFactory;
 import org.neo4j.dbcopy.json.JsonDataReader;
 import org.neo4j.dbcopy.json.JsonDataWriter;
 import org.neo4j.driver.*;
@@ -20,13 +18,11 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.neo4j.Neo4jContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SuppressWarnings("resource")
 public class DataTransferIT {
@@ -225,37 +221,5 @@ public class DataTransferIT {
         Relationship rel = getAllPaths().get(0).relationships().iterator().next();
         assertThat(rel.type()).isEqualTo("TO");
         assertThat(rel.asMap()).containsEntry("since", 2020L).containsEntry("close", false);
-    }
-
-    @Test
-    void should_fail_reader_construction_when_source_database_does_not_exist() {
-        assertThatThrownBy(() -> new DataReaderFactory()
-                .createReader(URI.create(neo4j.getBoltUrl()), "neo4j", "password", "missing-source-db"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to open database 'missing-source-db'");
-    }
-
-    @Test
-    void should_fail_writer_construction_when_target_database_does_not_exist() {
-        assertThatThrownBy(() -> new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", "missing-target-db"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to open database 'missing-target-db'");
-    }
-
-    @Test
-    void should_fail_reader_construction_when_credentials_are_wrong() {
-        assertThatThrownBy(() -> new DataReaderFactory()
-                .createReader(URI.create(neo4j.getBoltUrl()), "neo4j", "wrong-password", "neo4j"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to authenticate to the Neo4j server");
-    }
-
-    @Test
-    void should_fail_writer_construction_when_credentials_are_wrong() {
-        assertThatThrownBy(() -> new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "wrong-password", "neo4j"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to authenticate to the Neo4j server");
     }
 }

@@ -71,6 +71,9 @@ abstract class EndpointFactorySupport {
                             ". Check that the database exists and that your user can access it.",
                     cause);
         }
+        if (cause instanceof Neo4jException adminException && "Neo.ClientError.Statement.UnsupportedAdministrationCommand".equals(adminException.code())) {
+            return new IllegalArgumentException("Creating databases requires Neo4j Enterprise Edition.", cause);
+        }
         return new IllegalArgumentException(
                 "Unable to open Neo4j endpoint at " + address + ": " + cause.getMessage(),
                 cause);

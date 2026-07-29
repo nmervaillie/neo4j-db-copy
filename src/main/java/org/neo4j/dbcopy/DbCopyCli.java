@@ -86,6 +86,12 @@ class DbCopyCli implements Callable<Integer> {
     private String targetDatabase;
 
     @Option(
+            names = "--create-target-database",
+            description = "Create the target database if it does not exist (only valid for bolt/neo4j targets)"
+    )
+    private boolean createTargetDatabase = false;
+
+    @Option(
             names = {"-enp", "--exclude-node-properties"},
             split = ",",
             description = "Comma-separated list of node properties to exclude from the copy"
@@ -120,7 +126,7 @@ class DbCopyCli implements Callable<Integer> {
             reader = dataReaderFactory.createReader(sourceAddress, sourceUserName, sourcePassword, sourceDatabase);
             databaseStateManager = reader.createStateManager(lockSourceDatabase);
             databaseStateManager.makeReadOnly();
-            writer = dataWriterFactory.createWriter(targetAddress, targetUserName, targetPassword, targetDatabase);
+            writer = dataWriterFactory.createWriter(targetAddress, targetUserName, targetPassword, targetDatabase, createTargetDatabase);
 
             try {
                 new DataTransfer(reader, writer, copyOptions)
