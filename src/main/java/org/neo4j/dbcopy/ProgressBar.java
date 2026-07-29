@@ -8,6 +8,7 @@ public class ProgressBar {
     private final long total;
     private final long startTimeNanos;
     private int processed;
+    private int lastPrintedProgress = -1;
 
     public ProgressBar(String itemType, long total) {
         this.itemType = itemType;
@@ -18,7 +19,11 @@ public class ProgressBar {
 
     public void updateProgress(int batchSize) {
         processed += batchSize;
-        int progress = total == 0 ? 100 : (int) ((processed / (double) total) * 100);
+        int progress = total == 0 ? 100 : (int) (processed * 100L / total);
+        if (progress == lastPrintedProgress) {
+            return;
+        }
+        lastPrintedProgress = progress;
         double elapsedSeconds = Math.max((System.nanoTime() - startTimeNanos) / 1_000_000_000.0, 0.001d);
         double averagePerSecond = processed / elapsedSeconds;
         StringBuilder bar = new StringBuilder("[");
