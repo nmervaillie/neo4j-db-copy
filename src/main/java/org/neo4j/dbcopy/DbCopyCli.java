@@ -20,6 +20,7 @@ import java.util.concurrent.Callable;
         name = "neo4j-db-copy",
         mixinStandardHelpOptions = true,
         version = "checksum 4.0",
+        usageHelpWidth = 150,
         description = """
                 Copy the content of a Neo4j database to another Neo4j database, or to/from a JSONL file.
                 If the source/target address starts with bolt/neo4j, Bolt is used.
@@ -36,78 +37,96 @@ class DbCopyCli implements Callable<Integer> {
     @Option(
             names = {"-sa", "--source-address"},
             required = true,
-            description = "The source address: bolt/neo4j URI for Neo4j, or file:///path/to/file.jsonl for JSONL"
+            defaultValue = "${SOURCE_ADDRESS}",
+            description = {
+                    "The source address: bolt/neo4j URI for Neo4j, or",
+                    "file:///path/to/file.jsonl for JSONL (env: SOURCE_ADDRESS)"
+            }
     )
     private URI sourceAddress;
 
     @Option(
             names = {"-su", "--source-username"},
-            description = "The source database username to connect as (default: neo4j, used only for bolt/neo4j URIs)"
+            defaultValue = "${SOURCE_USERNAME}",
+            description = "The source database username to connect as (default: neo4j, used only for bolt/neo4j URIs) (env: SOURCE_USERNAME)"
     )
     private String sourceUserName = "neo4j";
 
     @Option(
             names = {"-sp", "--source-password"},
             interactive = true,
-            description = "The source database password to connect with (used only for bolt/neo4j URIs)"
+            defaultValue = "${SOURCE_PASSWORD}",
+            description = "The source database password to connect with (used only for bolt/neo4j URIs) (env: SOURCE_PASSWORD)"
     )
     private String sourcePassword;
 
     @Option(
             names = {"-sd", "--source-database"},
-            description = "The source database to connect to (used only for bolt/neo4j URIs)."
+            defaultValue = "${SOURCE_DATABASE}",
+            description = "The source database to connect to (used only for bolt/neo4j URIs) (env: SOURCE_DATABASE)."
     )
     private String sourceDatabase;
 
     @Option(
             names = {"-ta", "--target-address"},
             required = true,
-            description = "The target address: bolt/neo4j URI for Neo4j, or file:///path/to/file.jsonl for JSONL"
+            defaultValue = "${TARGET_ADDRESS}",
+            description = {
+                    "The target address: bolt/neo4j URI for Neo4j, or",
+                    "file:///path/to/file.jsonl for JSONL (env: TARGET_ADDRESS)"
+            }
     )
     private URI targetAddress;
 
     @Option(
             names = {"-tu", "--target-username"},
-            description = "The target database username to connect as (default: neo4j, used only for bolt/neo4j URIs)"
+            defaultValue = "${TARGET_USERNAME}",
+            description = "The target database username to connect as (default: neo4j, used only for bolt/neo4j URIs) (env: TARGET_USERNAME)"
     )
     private String targetUserName = "neo4j";
 
     @Option(
             names = {"-tp", "--target-password"},
             interactive = true,
-            description = "The target database password to connect with (used only for bolt/neo4j URIs)"
+            defaultValue = "${TARGET_PASSWORD}",
+            description = "The target database password to connect with (used only for bolt/neo4j URIs) (env: TARGET_PASSWORD)"
     )
     private String targetPassword;
 
     @Option(
             names = {"-td", "--target-database"},
-            description = "The target database to connect to (used only for bolt/neo4j URIs)."
+            defaultValue = "${TARGET_DATABASE}",
+            description = "The target database to connect to (used only for bolt/neo4j URIs) (env: TARGET_DATABASE)."
     )
     private String targetDatabase;
 
     @Option(
             names = "--create-target-database",
-            description = "Create the target database if it does not exist (only valid for bolt/neo4j targets)"
+            defaultValue = "${CREATE_TARGET_DATABASE}",
+            description = "Create the target database if it does not exist (only valid for bolt/neo4j targets) (env: CREATE_TARGET_DATABASE)"
     )
     private boolean createTargetDatabase = false;
 
     @Option(
             names = {"-enp", "--exclude-node-properties"},
             split = ",",
-            description = "Comma-separated list of node properties to exclude from the copy"
+            defaultValue = "${EXCLUDE_NODE_PROPERTIES}",
+            description = "Comma-separated list of node properties to exclude from the copy (env: EXCLUDE_NODE_PROPERTIES)"
     )
     private Set<String> excludeNodeProperties = new HashSet<>();
 
     @Option(
             names = {"-erp", "--exclude-relationship-properties"},
             split = ",",
-            description = "Comma-separated list of relationship properties to exclude from the copy"
+            defaultValue = "${EXCLUDE_RELATIONSHIP_PROPERTIES}",
+            description = "Comma-separated list of relationship properties to exclude from the copy (env: EXCLUDE_RELATIONSHIP_PROPERTIES)"
     )
     private Set<String> excludeRelationshipProperties = new HashSet<>();
 
     @Option(
             names = {"-lock", "--lock-source-database"},
-            description = "Set the source database to read-only mode before copying (only valid for bolt/neo4j source)"
+            defaultValue = "${LOCK_SOURCE_DATABASE}",
+            description = "Set the source database to read-only mode before copying (only valid for bolt/neo4j source) (env: LOCK_SOURCE_DATABASE)"
     )
     private boolean lockSourceDatabase = false;
 

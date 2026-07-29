@@ -24,56 +24,53 @@ The resulting app can be found in the `target` directory.
 
 [source,bash]
 ----
-Usage: neo4j-db-copy [-hV] [--create-target-database] [-lock] [-sp] [-tp]
-                     -sa=<sourceAddress> [-sd=<sourceDatabase>]
-                     [-su=<sourceUserName>] -ta=<targetAddress>
-                     [-td=<targetDatabase>] [-tu=<targetUserName>]
-                     [-enp=<excludeNodeProperties>[,
-                     <excludeNodeProperties>...]]...
-                     [-erp=<excludeRelationshipProperties>[,
-                     <excludeRelationshipProperties>...]]...
-Copy the content of a Neo4j database to another Neo4j database, or to/from a
-JSONL file.
+Usage: neo4j-db-copy [-hV] [--create-target-database] [-lock] [-sp] [-tp] -sa=<sourceAddress> [-sd=<sourceDatabase>] [-su=<sourceUserName>]
+                     -ta=<targetAddress> [-td=<targetDatabase>] [-tu=<targetUserName>] [-enp=<excludeNodeProperties>[,<excludeNodeProperties>...]]...
+                     [-erp=<excludeRelationshipProperties>[,<excludeRelationshipProperties>...]]...
+Copy the content of a Neo4j database to another Neo4j database, or to/from a JSONL file.
+If the source/target address starts with bolt/neo4j, Bolt is used.
+If it starts with file, a JSONL file is used.
       --create-target-database
-                  Create the target database if it does not exist (only valid
-                    for bolt/neo4j targets)
-      -enp, --exclude-node-properties=<excludeNodeProperties>[,
-        <excludeNodeProperties>...]
-                  Comma-separated list of node properties to exclude from the
-                    copy
-      -erp, --exclude-relationship-properties=<excludeRelationshipProperties>[,
-        <excludeRelationshipProperties>...]
-                  Comma-separated list of relationship properties to exclude
-                    from the copy
+                  Create the target database if it does not exist (only valid for bolt/neo4j targets) (env: CREATE_TARGET_DATABASE)
+      -enp, --exclude-node-properties=<excludeNodeProperties>[,<excludeNodeProperties>...]
+                  Comma-separated list of node properties to exclude from the copy (env: EXCLUDE_NODE_PROPERTIES)
+      -erp, --exclude-relationship-properties=<excludeRelationshipProperties>[,<excludeRelationshipProperties>...]
+                  Comma-separated list of relationship properties to exclude from the copy (env: EXCLUDE_RELATIONSHIP_PROPERTIES)
   -h, --help      Show this help message and exit.
       -lock, --lock-source-database
-                  Set the source database to read-only mode before copying
-                    (only valid for bolt/neo4j source)
+                  Set the source database to read-only mode before copying (only valid for bolt/neo4j source) (env: LOCK_SOURCE_DATABASE)
       -sa, --source-address=<sourceAddress>
                   The source address: bolt/neo4j URI for Neo4j, or
-                    file:///path/to/file.jsonl for JSONL
+                  file:///path/to/file.jsonl for JSONL (env: SOURCE_ADDRESS)
       -sd, --source-database=<sourceDatabase>
-                  The source database to connect to (used only for bolt/neo4j
-                    URIs).
+                  The source database to connect to (used only for bolt/neo4j URIs) (env: SOURCE_DATABASE).
       -sp, --source-password
-                  The source database password to connect with (used only for
-                    bolt/neo4j URIs)
+                  The source database password to connect with (used only for bolt/neo4j URIs) (env: SOURCE_PASSWORD)
       -su, --source-username=<sourceUserName>
-                  The source database username to connect as (default: neo4j,
-                    used only for bolt/neo4j URIs)
+                  The source database username to connect as (default: neo4j, used only for bolt/neo4j URIs) (env: SOURCE_USERNAME)
       -ta, --target-address=<targetAddress>
                   The target address: bolt/neo4j URI for Neo4j, or
-                    file:///path/to/file.jsonl for JSONL
+                  file:///path/to/file.jsonl for JSONL (env: TARGET_ADDRESS)
       -td, --target-database=<targetDatabase>
-                  The target database to connect to (used only for bolt/neo4j
-                    URIs).
+                  The target database to connect to (used only for bolt/neo4j URIs) (env: TARGET_DATABASE).
       -tp, --target-password
-                  The target database password to connect with (used only for
-                    bolt/neo4j URIs)
+                  The target database password to connect with (used only for bolt/neo4j URIs) (env: TARGET_PASSWORD)
       -tu, --target-username=<targetUserName>
-                  The target database username to connect as (default: neo4j,
-                    used only for bolt/neo4j URIs)
+                  The target database username to connect as (default: neo4j, used only for bolt/neo4j URIs) (env: TARGET_USERNAME)
   -V, --version   Print version information and exit.
+----
+
+Every option can also be set via an environment variable instead of a command-line flag (see `env:` in the
+help above) — an explicit command-line flag always takes precedence. This is handy for pulling credentials
+from a secret manager: fetch the secret in your wrapper script/CI job and export it into the matching
+env var right before invoking the tool, e.g.:
+
+[source,bash]
+----
+export SOURCE_PASSWORD="$(vault kv get -field=password secret/neo4j/source)"
+export TARGET_PASSWORD="$(vault kv get -field=password secret/neo4j/target)"
+neo4j-db-copy -sa neo4j+s://source.example:7687 -su neo4j -sd sourcedb \
+              -ta neo4j+s://target.example:7687 -tu neo4j -td targetdb
 ----
 
 Bolt credentials and database names are required only for bolt/neo4j endpoints.
@@ -83,7 +80,7 @@ The JSON export format is JSONL: one JSON object per line.
 Files ending in `.gz` are read and written as gzip-compressed JSONL.
 Only `file:` URIs are supported for JSON import/export.
 
-Examples:
+== Examples
 
 [source,bash]
 ----
