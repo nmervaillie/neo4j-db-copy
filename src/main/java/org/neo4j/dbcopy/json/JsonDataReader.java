@@ -15,6 +15,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -29,6 +30,12 @@ public final class JsonDataReader implements DataReader {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JsonDataReader(Path path) {
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException("JSON import file does not exist: " + path);
+        }
+        if (!Files.isReadable(path)) {
+            throw new IllegalArgumentException("JSON import file is not readable: " + path);
+        }
         this.path = path;
     }
 

@@ -175,6 +175,16 @@ class JsonDataReaderWriterTest {
     }
 
     @Test
+    void should_fail_when_json_import_file_does_not_exist() {
+        Path jsonFile = Path.of("does-not-exist-" + System.nanoTime() + ".jsonl");
+
+        assertThatThrownBy(() -> new JsonDataReader(jsonFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("JSON import file does not exist")
+                .hasMessageContaining(jsonFile.toString());
+    }
+
+    @Test
     void should_fail_when_json_export_file_already_exists() throws Exception {
         Path jsonFile = Files.createTempFile("dbcopy-existing", ".jsonl");
 
