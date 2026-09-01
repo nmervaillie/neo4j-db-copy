@@ -12,7 +12,8 @@ abstract class EndpointFactorySupport {
 
     protected enum EndpointKind {
         BOLT,
-        JSON
+        JSON,
+        PARQUET
     }
 
     protected EndpointKind endpointKind(URI uri) {
@@ -27,8 +28,11 @@ abstract class EndpointFactorySupport {
         if ("file".equals(lower)) {
             return EndpointKind.JSON;
         }
+        if ("parquet".equals(lower)) {
+            return EndpointKind.PARQUET;
+        }
         throw new IllegalArgumentException("Unsupported scheme '" + scheme + "' in address: " + uri +
-                ". Supported schemes are bolt/neo4j and file.");
+                ". Supported schemes are bolt/neo4j, file and parquet.");
     }
 
     protected void requireOption(String optionName, String value) {
@@ -50,6 +54,19 @@ abstract class EndpointFactorySupport {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid " + endpointName + " file URI '" + uri + "': " + e.getMessage(), e);
         }
+    }
+
+    protected Path toParquetDirectoryPath(URI uri, String endpointName) {
+        if (!"parquet".equalsIgnoreCase(uri.getScheme())) {
+            throw new IllegalArgumentException("The " + endpointName +
+                    " parquet endpoint must use a parquet URI: " + uri);
+        }
+        String path = uri.getPath();
+        if (path == null || path.isBlank() || "/".equals(path)) {
+            throw new IllegalArgumentException("The " + endpointName +
+                    " parquet endpoint must point to a directory: " + uri);
+        }
+        return Path.of(path);
     }
 
     protected IllegalArgumentException userFriendlyBoltException(URI address, String database, RuntimeException cause) {

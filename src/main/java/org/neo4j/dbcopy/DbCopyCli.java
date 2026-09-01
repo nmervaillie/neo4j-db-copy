@@ -4,6 +4,7 @@ import org.neo4j.dbcopy.io.DataReader;
 import org.neo4j.dbcopy.io.DataReaderFactory;
 import org.neo4j.dbcopy.io.DataWriter;
 import org.neo4j.dbcopy.io.DataWriterFactory;
+import org.neo4j.dbcopy.schema.GraphSchema;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -22,9 +23,10 @@ import java.util.concurrent.Callable;
         version = "checksum 4.0",
         usageHelpWidth = 150,
         description = """
-                Copy the content of a Neo4j database to another Neo4j database, or to/from a JSONL file.
+                Copy the content of a Neo4j database to another Neo4j database, a JSONL file, or a parquet directory.
                 If the source/target address starts with bolt/neo4j, Bolt is used.
-                If it starts with file, a JSONL file is used."""
+                If it starts with file, a JSONL file is used.
+                If it starts with parquet, a directory of parquet files is used."""
 )
 class DbCopyCli implements Callable<Integer> {
 
@@ -40,7 +42,8 @@ class DbCopyCli implements Callable<Integer> {
             defaultValue = "${SOURCE_ADDRESS}",
             description = {
                     "The source address: bolt/neo4j URI for Neo4j, or",
-                    "file:///path/to/file.jsonl for JSONL (env: SOURCE_ADDRESS)"
+                    "file:///path/to/file.jsonl for JSONL, or",
+                    "parquet:///path/to/dir for parquet (env: SOURCE_ADDRESS)"
             }
     )
     private URI sourceAddress;
@@ -73,7 +76,8 @@ class DbCopyCli implements Callable<Integer> {
             defaultValue = "${TARGET_ADDRESS}",
             description = {
                     "The target address: bolt/neo4j URI for Neo4j, or",
-                    "file:///path/to/file.jsonl for JSONL (env: TARGET_ADDRESS)"
+                    "file:///path/to/file.jsonl for JSONL, or",
+                    "parquet:///path/to/dir for parquet (env: TARGET_ADDRESS)"
             }
     )
     private URI targetAddress;
@@ -145,9 +149,13 @@ class DbCopyCli implements Callable<Integer> {
             reader = dataReaderFactory.createReader(sourceAddress, sourceUserName, sourcePassword, sourceDatabase);
             databaseStateManager = reader.createStateManager(lockSourceDatabase);
             databaseStateManager.makeReadOnly();
-            writer = dataWriterFactory.createWriter(targetAddress, targetUserName, targetPassword, targetDatabase, createTargetDatabase);
-
             try {
+                GraphSchema schema = dataWriterFactory.needsSchema(targetAddress)
+                        ? reader.scanSchema(copyOptions)
+                        : null;
+                writer = dataWriterFactory.createWriter(targetAddress, targetUserName, targetPassword,
+                        targetDatabase, createTargetDatabase, schema);
+
                 new DataTransfer(reader, writer, copyOptions)
                         .copyAllNodesAndRels()
                         .block();

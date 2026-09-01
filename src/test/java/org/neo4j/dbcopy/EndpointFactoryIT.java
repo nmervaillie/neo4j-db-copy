@@ -51,7 +51,7 @@ public class EndpointFactoryIT {
     @Test
     void should_fail_writer_construction_when_target_database_does_not_exist() {
         assertThatThrownBy(() -> new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", "missing-target-db", false))
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", "missing-target-db", false, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unable to open database 'missing-target-db'");
     }
@@ -67,7 +67,7 @@ public class EndpointFactoryIT {
     @Test
     void should_fail_writer_construction_when_credentials_are_wrong() {
         assertThatThrownBy(() -> new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "wrong-password", "neo4j", false))
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "wrong-password", "neo4j", false, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unable to authenticate to the Neo4j server");
     }
@@ -77,7 +77,7 @@ public class EndpointFactoryIT {
         String newDatabase = "new-db-" + UUID.randomUUID();
 
         try (DataWriter writer = new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", newDatabase, true)) {
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", newDatabase, true, null)) {
             assertThat(writer).isNotNull();
         }
 
@@ -95,12 +95,12 @@ public class EndpointFactoryIT {
         String existingDatabase = "existing-db-" + UUID.randomUUID();
 
         try (DataWriter writer = new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", existingDatabase, true)) {
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", existingDatabase, true, null)) {
             assertThat(writer).isNotNull();
         }
 
         try (DataWriter writer = new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", existingDatabase, true)) {
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", existingDatabase, true, null)) {
             assertThat(writer).isNotNull();
         }
     }
@@ -110,7 +110,7 @@ public class EndpointFactoryIT {
         String database = "nonempty-db-" + UUID.randomUUID();
 
         try (DataWriter writer = new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", database, true)) {
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", database, true, null)) {
             assertThat(writer).isNotNull();
         }
 
@@ -125,7 +125,7 @@ public class EndpointFactoryIT {
         appender.start();
         logger.addAppender(appender);
         try (DataWriter writer = new DataWriterFactory()
-                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", database, false)) {
+                .createWriter(URI.create(neo4j.getBoltUrl()), "neo4j", "password", database, false, null)) {
             assertThat(writer).isNotNull();
         } finally {
             logger.detachAppender(appender);

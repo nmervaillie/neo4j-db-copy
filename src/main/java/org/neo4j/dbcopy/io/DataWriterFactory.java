@@ -2,6 +2,8 @@ package org.neo4j.dbcopy.io;
 
 import org.neo4j.dbcopy.bolt.BoltWriter;
 import org.neo4j.dbcopy.json.JsonDataWriter;
+import org.neo4j.dbcopy.parquet.ParquetDataWriter;
+import org.neo4j.dbcopy.schema.GraphSchema;
 import org.neo4j.driver.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,13 +16,20 @@ public final class DataWriterFactory extends EndpointFactorySupport {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataWriterFactory.class);
 
-    public DataWriter createWriter(URI targetAddress, String targetUserName, String targetPassword, String targetDatabase,
-                                   boolean createTargetDatabase) {
+    public boolean needsSchema(URI targetAddress) {
+        return endpointKind(targetAddress) == EndpointKind.PARQUET;
+    }
+
+    public DataWriter createWriter(URI targetAddress, String targetUserName, String targetPassword,
+                                   String targetDatabase, boolean createTargetDatabase,
+                                   GraphSchema schema) {
         EndpointKind kind = endpointKind(targetAddress);
         return switch (kind) {
             case BOLT ->
                     createBoltWriter(targetAddress, targetUserName, targetPassword, targetDatabase, createTargetDatabase);
             case JSON -> new JsonDataWriter(toJsonFilePath(targetAddress, "target"));
+            case PARQUET -> new ParquetDataWriter(
+                    toParquetDirectoryPath(targetAddress, "target"), schema);
         };
     }
 

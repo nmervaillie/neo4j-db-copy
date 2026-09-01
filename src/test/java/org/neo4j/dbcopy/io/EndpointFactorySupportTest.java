@@ -54,6 +54,25 @@ class EndpointFactorySupportTest {
                 .hasMessageContaining("must use a file URI");
     }
 
+    @Test
+    void should_detect_parquet_scheme() {
+        assertThat(support.endpointKindFor(URI.create("parquet:///tmp/export")))
+                .isEqualTo(EndpointFactorySupport.EndpointKind.PARQUET);
+    }
+
+    @Test
+    void should_convert_parquet_uri_to_directory_path() {
+        assertThat(support.parquetDirectoryPath(URI.create("parquet:///tmp/export"), "target"))
+                .isEqualTo(Path.of("/tmp/export"));
+    }
+
+    @Test
+    void should_reject_a_parquet_uri_without_a_path() {
+        assertThatThrownBy(() -> support.parquetDirectoryPath(URI.create("parquet:///"), "target"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must point to a directory");
+    }
+
     private static final class TestEndpointFactorySupport extends EndpointFactorySupport {
 
         EndpointKind endpointKindFor(URI uri) {
@@ -66,6 +85,10 @@ class EndpointFactorySupportTest {
 
         Path jsonFilePath(URI uri, String endpointName) {
             return toJsonFilePath(uri, endpointName);
+        }
+
+        Path parquetDirectoryPath(URI uri, String endpointName) {
+            return toParquetDirectoryPath(uri, endpointName);
         }
     }
 }

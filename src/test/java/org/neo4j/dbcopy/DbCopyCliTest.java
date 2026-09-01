@@ -107,6 +107,47 @@ class DbCopyCliTest {
         assertThat(result.err).contains("--lock-source-database is only valid");
     }
 
+    @Test
+    void should_reject_a_parquet_target_with_a_json_source() throws Exception {
+        Path sourceFile = Files.createTempFile("dbcopy-source", ".jsonl");
+        Path targetDir = Files.createTempDirectory("dbcopy-parquet-target");
+
+        CommandResult result = execute(
+                "-sa", sourceFile.toUri().toString(),
+                "-ta", "parquet://" + targetDir.resolve("export")
+        );
+
+        assertThat(result.exitCode).isEqualTo(1);
+        assertThat(result.err).contains("A parquet target requires a bolt/neo4j or parquet source.");
+    }
+
+    @Test
+    void should_reject_a_parquet_source_directory_that_is_not_an_export() throws Exception {
+        Path sourceDir = Files.createTempDirectory("dbcopy-parquet-source");
+        Path targetFile = Files.createTempDirectory("dbcopy-target-dir").resolve("export.jsonl");
+
+        CommandResult result = execute(
+                "-sa", "parquet://" + sourceDir,
+                "-ta", targetFile.toUri().toString()
+        );
+
+        assertThat(result.exitCode).isEqualTo(1);
+        assertThat(result.err).contains("is not a neo4j-db-copy parquet export");
+    }
+
+    @Test
+    void should_reject_a_missing_parquet_source_directory() throws Exception {
+        Path targetFile = Files.createTempDirectory("dbcopy-target-dir2").resolve("export.jsonl");
+
+        CommandResult result = execute(
+                "-sa", "parquet:///tmp/definitely-not-here-" + System.nanoTime(),
+                "-ta", targetFile.toUri().toString()
+        );
+
+        assertThat(result.exitCode).isEqualTo(1);
+        assertThat(result.err).contains("does not exist");
+    }
+
     private CommandResult execute(String... args) {
         StringWriter out = new StringWriter();
         StringWriter err = new StringWriter();

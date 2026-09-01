@@ -11,11 +11,13 @@ public class CopyOptions {
     private final Set<String> nodePropertiesToExclude;
     private final Set<String> relationshipPropertiesToExclude;
     private final int batchSize;
+    private final int schemaSampleSize;
 
     private CopyOptions(Builder builder) {
         this.nodePropertiesToExclude = builder.nodePropertiesToExclude;
         this.relationshipPropertiesToExclude = builder.relationshipPropertiesToExclude;
         this.batchSize = builder.batchSize;
+        this.schemaSampleSize = builder.schemaSampleSize;
     }
 
     public Set<String> getNodePropertiesToExclude() {
@@ -30,10 +32,19 @@ public class CopyOptions {
         return batchSize;
     }
 
+    /**
+     * How many rows per node label set and per relationship type the parquet schema scan samples.
+     * Not exposed as a CLI option yet.
+     */
+    public int schemaSampleSize() {
+        return schemaSampleSize;
+    }
+
     public static class Builder {
         private Set<String> nodePropertiesToExclude = Collections.emptySet();
         private Set<String> relationshipPropertiesToExclude = Collections.emptySet();
         private int batchSize = 5000;
+        private int schemaSampleSize = 1000;
 
         public Builder excludeNodeProperties(Set<String> properties) {
             Objects.requireNonNull(properties);
@@ -49,6 +60,11 @@ public class CopyOptions {
 
         public Builder batchSize(int batchSize) {
             this.batchSize = batchSize;
+            return this;
+        }
+
+        public Builder schemaSampleSize(int schemaSampleSize) {
+            this.schemaSampleSize = schemaSampleSize;
             return this;
         }
 

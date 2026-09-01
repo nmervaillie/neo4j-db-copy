@@ -33,14 +33,15 @@
 		<assertj-core.version>4.0.0-M1</assertj-core.version>
 		<blockhound-junit-platform.version>1.0.3.RELEASE</blockhound-junit-platform.version>
 		<failsafe.version>3.0.0-M7</failsafe.version>
+		<hardwood.version>1.1.0.Beta1</hardwood.version>
 		<jackson.version>2.21.2</jackson.version>
-		<java.version>17</java.version>
+		<java.version>21</java.version>
 		<jreleaser.version>1.13.1</jreleaser.version>
 		<junit-jupiter.version>6.1.0-M1</junit-jupiter.version>
 		<logback-classic.version>1.5.32</logback-classic.version>
 		<maven-compiler-plugin-version>3.10.1</maven-compiler-plugin-version>
-		<maven.compiler.source>17</maven.compiler.source>
-		<maven.compiler.target>17</maven.compiler.target>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
 		<mockito-core.version>5.23.0</mockito-core.version>
 		<neo4j-java-driver.version>6.0.4</neo4j-java-driver.version>
 		<picocli.version>4.7.7</picocli.version>
@@ -55,6 +56,13 @@
 
 	<dependencyManagement>
 		<dependencies>
+			<dependency>
+				<groupId>dev.hardwood</groupId>
+				<artifactId>hardwood-bom</artifactId>
+				<version>${hardwood.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 			<dependency>
 				<groupId>io.projectreactor</groupId>
 				<artifactId>reactor-bom</artifactId>
@@ -87,6 +95,24 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 			<version>${jackson.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.luben</groupId>
+			<artifactId>zstd-jni</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>dev.hardwood</groupId>
+			<artifactId>hardwood-core</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>com.aayushatharva.brotli4j</groupId>
+					<artifactId>brotli4j</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>at.yawk.lz4</groupId>
+					<artifactId>lz4-java</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>info.picocli</groupId>

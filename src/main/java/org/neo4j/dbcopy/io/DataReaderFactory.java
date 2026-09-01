@@ -2,6 +2,7 @@ package org.neo4j.dbcopy.io;
 
 import org.neo4j.dbcopy.bolt.BoltReader;
 import org.neo4j.dbcopy.json.JsonDataReader;
+import org.neo4j.dbcopy.parquet.ParquetDataReader;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
@@ -16,6 +17,7 @@ public final class DataReaderFactory extends EndpointFactorySupport {
         return switch (kind) {
             case BOLT -> createBoltReader(sourceAddress, sourceUserName, sourcePassword, sourceDatabase);
             case JSON -> new JsonDataReader(toJsonFilePath(sourceAddress, "source"));
+            case PARQUET -> new ParquetDataReader(toParquetDirectoryPath(sourceAddress, "source"));
         };
     }
 

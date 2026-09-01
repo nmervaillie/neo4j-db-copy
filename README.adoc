@@ -2,7 +2,7 @@
 
 image:https://github.com/nmervaillie/neo4j-db-copy/actions/workflows/ci.yml/badge.svg["CI", link="https://github.com/nmervaillie/neo4j-db-copy/actions/workflows/ci.yml"]
 
-A development tool useful to copy the data from a Neo4j database to another Neo4j database, or to and from a JSONL file.
+A development tool useful to copy the data from a Neo4j database to another Neo4j database, or to and from a JSONL file or a directory of parquet files.
 Databases can be local or remote.
 As the copy is done through the Neo4j driver or a local JSONL export, no admin access to Neo4j is required.
 
@@ -14,7 +14,7 @@ Note: data deletion, users, indexes, constraints are not handled.
 
 == Building
 
-Building / running requires Java 17+.
+Building / running requires Java 21+.
 
 `mvn clean package -DskipTests`
 
@@ -27,9 +27,10 @@ The resulting app can be found in the `target` directory.
 Usage: neo4j-db-copy [-hV] [--create-target-database] [-lock] [-sp] [-tp] -sa=<sourceAddress> [-sd=<sourceDatabase>] [-su=<sourceUserName>]
                      -ta=<targetAddress> [-td=<targetDatabase>] [-tu=<targetUserName>] [-enp=<excludeNodeProperties>[,<excludeNodeProperties>...]]...
                      [-erp=<excludeRelationshipProperties>[,<excludeRelationshipProperties>...]]...
-Copy the content of a Neo4j database to another Neo4j database, or to/from a JSONL file.
+Copy the content of a Neo4j database to another Neo4j database, a JSONL file, or a parquet directory.
 If the source/target address starts with bolt/neo4j, Bolt is used.
 If it starts with file, a JSONL file is used.
+If it starts with parquet, a directory of parquet files is used.
       --create-target-database
                   Create the target database if it does not exist (only valid for bolt/neo4j targets) (env: CREATE_TARGET_DATABASE)
       -enp, --exclude-node-properties=<excludeNodeProperties>[,<excludeNodeProperties>...]
@@ -41,7 +42,8 @@ If it starts with file, a JSONL file is used.
                   Set the source database to read-only mode before copying (only valid for bolt/neo4j source) (env: LOCK_SOURCE_DATABASE)
       -sa, --source-address=<sourceAddress>
                   The source address: bolt/neo4j URI for Neo4j, or
-                  file:///path/to/file.jsonl for JSONL (env: SOURCE_ADDRESS)
+                  file:///path/to/file.jsonl for JSONL, or
+                  parquet:///path/to/dir for parquet (env: SOURCE_ADDRESS)
       -sd, --source-database=<sourceDatabase>
                   The source database to connect to (used only for bolt/neo4j URIs) (env: SOURCE_DATABASE).
       -sp, --source-password
@@ -50,7 +52,8 @@ If it starts with file, a JSONL file is used.
                   The source database username to connect as (default: neo4j, used only for bolt/neo4j URIs) (env: SOURCE_USERNAME)
       -ta, --target-address=<targetAddress>
                   The target address: bolt/neo4j URI for Neo4j, or
-                  file:///path/to/file.jsonl for JSONL (env: TARGET_ADDRESS)
+                  file:///path/to/file.jsonl for JSONL, or
+                  parquet:///path/to/dir for parquet (env: TARGET_ADDRESS)
       -td, --target-database=<targetDatabase>
                   The target database to connect to (used only for bolt/neo4j URIs) (env: TARGET_DATABASE).
       -tp, --target-password
@@ -80,6 +83,19 @@ The JSON export format is JSONL: one JSON object per line.
 Files ending in `.gz` are read and written as gzip-compressed JSONL.
 Only `file:` URIs are supported for JSON import/export.
 
+The parquet export writes a directory: one file per distinct node label set under `nodes/`, and
+one file per relationship type under `relationships/`. Identity columns are `__dbcopy_id`,
+`__dbcopy_labels` for nodes and `__dbcopy_id`, `__dbcopy_source_id`, `__dbcopy_target_id`,
+`__dbcopy_type` for relationships. Each file records the Neo4j type of every property in its
+parquet footer, so no type information is lost.
+
+Parquet export is experimental: the graph schema is inferred by sampling 1000 nodes per label set
+and 1000 relationships per type. If a property does not have one consistent type across a label
+set, the export fails rather than writing incorrect data.
+
+A parquet directory can also be used as a source, in which case the property types are read from
+the files' footers and nothing is sampled or inferred.
+
 == Examples
 
 [source,bash]
@@ -102,5 +118,15 @@ neo4j-db-copy \
 # compressed JSONL -> Neo4j
 neo4j-db-copy \
   -sa file:///tmp/export.jsonl.gz \
+  -ta neo4j+s://target.example:7687 -tu neo4j -tp -td targetdb
+
+# Neo4j -> parquet
+neo4j-db-copy \
+  -sa neo4j+s://source.example:7687 -su neo4j -sp -sd sourcedb \
+  -ta parquet:///tmp/export
+
+# parquet -> Neo4j
+neo4j-db-copy \
+  -sa parquet:///tmp/export \
   -ta neo4j+s://target.example:7687 -tu neo4j -tp -td targetdb
 ----

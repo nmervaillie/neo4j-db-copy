@@ -37,3 +37,5 @@ build/
 
 ### Mac OS ###
 .DS_Store
+### Superpowers SDD scratch ###
+.superpowers/

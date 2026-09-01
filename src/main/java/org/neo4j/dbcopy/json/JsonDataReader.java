@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.neo4j.dbcopy.io.DataReader;
+import org.neo4j.dbcopy.io.NodeRecord;
+import org.neo4j.dbcopy.io.RelationshipRecord;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.types.Node;
@@ -21,7 +23,6 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 public final class JsonDataReader implements DataReader {
@@ -109,7 +110,7 @@ public final class JsonDataReader implements DataReader {
 
         Map<String, Value> properties = parseProperties(requireObject(root, "properties", "node"));
 
-        return new JsonNodeEntity(id, labels, properties);
+        return new NodeRecord(id, labels, properties);
     }
 
     private Relationship toRelationship(JsonNode root) {
@@ -120,7 +121,7 @@ public final class JsonDataReader implements DataReader {
 
         Map<String, Value> properties = parseProperties(requireObject(root, "properties", "relationship"));
 
-        return new JsonRelationshipEntity(id, startId, endId, type, properties);
+        return new RelationshipRecord(id, startId, endId, type, properties);
     }
 
     private Map<String, Value> parseProperties(JsonNode propsNode) {
@@ -278,186 +279,4 @@ public final class JsonDataReader implements DataReader {
         return field;
     }
 
-    private static final class JsonNodeEntity implements Node {
-
-        private final long id;
-        private final List<String> labels;
-        private final Map<String, Value> properties;
-
-        JsonNodeEntity(long id, List<String> labels, Map<String, Value> properties) {
-            this.id = id;
-            this.labels = List.copyOf(labels);
-            this.properties = Map.copyOf(properties);
-        }
-
-        @Override
-        public String elementId() { // we don't care, this is unused
-            return id + "";
-        }
-
-        @Override
-        public long id() {
-            return id;
-        }
-
-        @Override
-        public Map<String, Object> asMap() {
-            Map<String, Object> result = new LinkedHashMap<>();
-            for (Map.Entry<String, Value> e : properties.entrySet()) {
-                result.put(e.getKey(), e.getValue().asObject());
-            }
-            return result;
-        }
-
-        @Override
-        public <T> Map<String, T> asMap(Function<Value, T> mapFunction) {
-            Map<String, T> result = new LinkedHashMap<>();
-            for (Map.Entry<String, Value> e : properties.entrySet()) {
-                result.put(e.getKey(), mapFunction.apply(e.getValue()));
-            }
-            return result;
-        }
-
-        @Override
-        public boolean containsKey(String key) {
-            return properties.containsKey(key);
-        }
-
-        @Override
-        public Value get(String key) {
-            return properties.getOrDefault(key, Values.NULL);
-        }
-
-        @Override
-        public Iterable<String> keys() {
-            return properties.keySet();
-        }
-
-        @Override
-        public int size() {
-            return properties.size();
-        }
-
-        @Override
-        public Iterable<Value> values() {
-            return properties.values();
-        }
-
-        @Override
-        public <T> Iterable<T> values(Function<Value, T> mapFunction) {
-            List<T> result = new ArrayList<>(properties.size());
-            for (Value v : properties.values()) {
-                result.add(mapFunction.apply(v));
-            }
-            return result;
-        }
-
-        @Override
-        public boolean hasLabel(String label) {
-            return labels.contains(label);
-        }
-
-        @Override
-        public Iterable<String> labels() {
-            return labels;
-        }
-    }
-
-    private record JsonRelationshipEntity(long id, long startId, long endId, String type,
-                                          Map<String, Value> properties) implements Relationship {
-
-            private JsonRelationshipEntity(long id,
-                                           long startId,
-                                           long endId,
-                                           String type,
-                                           Map<String, Value> properties) {
-                this.id = id;
-                this.startId = startId;
-                this.endId = endId;
-                this.type = type;
-                this.properties = Map.copyOf(properties);
-            }
-
-            @Override
-            public String elementId() {
-                return id + "";
-            }
-
-            @Override
-            public Map<String, Object> asMap() {
-                Map<String, Object> result = new LinkedHashMap<>();
-                for (Map.Entry<String, Value> e : properties.entrySet()) {
-                    result.put(e.getKey(), e.getValue().asObject());
-                }
-                return result;
-            }
-
-            @Override
-            public <T> Map<String, T> asMap(Function<Value, T> mapFunction) {
-                Map<String, T> result = new LinkedHashMap<>();
-                for (Map.Entry<String, Value> e : properties.entrySet()) {
-                    result.put(e.getKey(), mapFunction.apply(e.getValue()));
-                }
-                return result;
-            }
-
-            @Override
-            public boolean containsKey(String key) {
-                return properties.containsKey(key);
-            }
-
-            @Override
-            public Value get(String key) {
-                return properties.getOrDefault(key, Values.NULL);
-            }
-
-            @Override
-            public Iterable<String> keys() {
-                return properties.keySet();
-            }
-
-            @Override
-            public int size() {
-                return properties.size();
-            }
-
-            @Override
-            public Iterable<Value> values() {
-                return properties.values();
-            }
-
-            @Override
-            public <T> Iterable<T> values(Function<Value, T> mapFunction) {
-                List<T> result = new ArrayList<>(properties.size());
-                for (Value v : properties.values()) {
-                    result.add(mapFunction.apply(v));
-                }
-                return result;
-            }
-
-            @Override
-            public boolean hasType(String relationshipType) {
-                return type.equals(relationshipType);
-            }
-
-            @Override
-            public long startNodeId() {
-                return startId;
-            }
-
-            @Override
-            public String startNodeElementId() {
-                return startId + "";
-            }
-
-            @Override
-            public long endNodeId() {
-                return endId;
-            }
-
-            @Override
-            public String endNodeElementId() {
-                return endId + "";
-            }
-        }
 }

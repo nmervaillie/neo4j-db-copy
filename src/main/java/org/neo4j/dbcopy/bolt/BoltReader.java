@@ -1,8 +1,10 @@
 package org.neo4j.dbcopy.bolt;
 
+import org.neo4j.dbcopy.CopyOptions;
 import org.neo4j.dbcopy.DatabaseStateManager;
 import org.neo4j.dbcopy.LockingDatabaseStateManager;
 import org.neo4j.dbcopy.io.DataReader;
+import org.neo4j.dbcopy.schema.GraphSchema;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.reactivestreams.ReactiveResult;
@@ -83,5 +85,10 @@ public class BoltReader implements DataReader {
     @Override
     public void close() {
         driver.close();
+    }
+
+    @Override
+    public GraphSchema scanSchema(CopyOptions copyOptions) {
+        return new BoltSchemaScanner(driver, databaseName).scan(copyOptions);
     }
 }
