@@ -12,9 +12,15 @@ It has been tested on small to average database sizes.
 
 Note: data deletion, users, indexes, constraints are not handled.
 
-== Building
+== Requirements
 
-Building / running requires Java 21+.
+* JDK 21 or later, to build and run the tool.
+* Neo4j 5.x or later on the source and target. Might work on 4.4 versions, untested.
+* No admin access is required for a plain copy; only a database user with read access to the source and write access to the target.
+* `--lock-source-database` and `--create-target-database` issue admin commands (`SET DATABASE ... ACCESS READ ONLY`, `CREATE DATABASE ...`) and require Neo4j Enterprise Edition with admin privileges.
+* APOC Core installed on the target database when the target is a Neo4j database: writing nodes and relationships uses `apoc.create.addLabels` and `apoc.create.relationship` to handle dynamic labels and relationship types. APOC is not needed for the source, nor for JSONL or parquet targets.
+
+== Building
 
 `mvn clean package -DskipTests`
 
