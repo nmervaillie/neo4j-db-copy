@@ -14,6 +14,7 @@ import picocli.CommandLine.Spec;
 
 import java.net.URI;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -112,6 +113,13 @@ class DbCopyCli implements Callable<Integer> {
     private boolean createTargetDatabase = false;
 
     @Option(
+            names = "--copy-indexes",
+            defaultValue = "${COPY_INDEXES}",
+            description = "Copy the indexes and constraints of the source database to the target database, once the data copy is complete (only valid when both source and target use bolt/neo4j). Index creation is asynchronous, indexes may still be populating when the tool exits (env: COPY_INDEXES)"
+    )
+    private boolean copyIndexes = false;
+
+    @Option(
             names = {"-enp", "--exclude-node-properties"},
             split = ",",
             defaultValue = "${EXCLUDE_NODE_PROPERTIES}",
@@ -150,6 +158,9 @@ class DbCopyCli implements Callable<Integer> {
             databaseStateManager = reader.createStateManager(lockSourceDatabase);
             databaseStateManager.makeReadOnly();
             try {
+                List<String> indexAndConstraintDdl = copyIndexes
+                        ? reader.readIndexAndConstraintDdl()
+                        : List.of();
                 GraphSchema schema = dataWriterFactory.needsSchema(targetAddress)
                         ? reader.scanSchema(copyOptions)
                         : null;
@@ -159,6 +170,10 @@ class DbCopyCli implements Callable<Integer> {
                 new DataTransfer(reader, writer, copyOptions)
                         .copyAllNodesAndRels()
                         .block();
+
+                if (copyIndexes) {
+                    writer.applyIndexAndConstraintDdl(indexAndConstraintDdl);
+                }
             } finally {
                 databaseStateManager.restoreInitialState();
             }

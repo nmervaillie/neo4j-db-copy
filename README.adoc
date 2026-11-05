@@ -10,7 +10,8 @@ This is useful to copy things around, for example test/reference data from an en
 
 It has been tested on small to average database sizes.
 
-Note: data deletion, users, indexes, constraints are not handled.
+Note: data deletion and users are not handled.
+Indexes and constraints are not copied by default; use `--copy-indexes`.
 
 == Requirements
 
@@ -30,13 +31,16 @@ The resulting app can be found in the `target` directory.
 
 [source,bash]
 ----
-Usage: neo4j-db-copy [-hV] [--create-target-database] [-lock] [-sp] [-tp] -sa=<sourceAddress> [-sd=<sourceDatabase>] [-su=<sourceUserName>]
-                     -ta=<targetAddress> [-td=<targetDatabase>] [-tu=<targetUserName>] [-enp=<excludeNodeProperties>[,<excludeNodeProperties>...]]...
-                     [-erp=<excludeRelationshipProperties>[,<excludeRelationshipProperties>...]]...
+Usage: neo4j-db-copy [-hV] [--copy-indexes] [--create-target-database] [-lock] [-sp] [-tp] -sa=<sourceAddress> [-sd=<sourceDatabase>]
+                     [-su=<sourceUserName>] -ta=<targetAddress> [-td=<targetDatabase>] [-tu=<targetUserName>] [-enp=<excludeNodeProperties>[,
+                     <excludeNodeProperties>...]]... [-erp=<excludeRelationshipProperties>[,<excludeRelationshipProperties>...]]...
 Copy the content of a Neo4j database to another Neo4j database, a JSONL file, or a parquet directory.
 If the source/target address starts with bolt/neo4j, Bolt is used.
 If it starts with file, a JSONL file is used.
 If it starts with parquet, a directory of parquet files is used.
+      --copy-indexes   Copy the indexes and constraints of the source database to the target database, once the data copy is complete (only valid
+                         when both source and target use bolt/neo4j). Index creation is asynchronous, indexes may still be populating when the tool
+                         exits (env: COPY_INDEXES)
       --create-target-database
                   Create the target database if it does not exist (only valid for bolt/neo4j targets) (env: CREATE_TARGET_DATABASE)
       -enp, --exclude-node-properties=<excludeNodeProperties>[,<excludeNodeProperties>...]
@@ -101,6 +105,15 @@ set, the export fails rather than writing incorrect data.
 
 A parquet directory can also be used as a source, in which case the property types are read from
 the files' footers and nothing is sampled or inferred.
+
+`--copy-indexes` copies the constraints and indexes of the source database to the target database:
+once the data copy is complete, the tool replays the source's `CREATE CONSTRAINT` and
+`CREATE INDEX` statements on the target, keeping the original names.
+Constraint-backed indexes are not copied separately, they are created by their own constraint.
+Note that constraint and index creation is asynchronous on the target: the tool does not wait for
+the population to finish, so constraints and indexes may still be `POPULATING` when the tool exits.
+Some constraint types (property existence, node/relationship key) require Neo4j Enterprise Edition
+on the target.
 
 == Examples
 

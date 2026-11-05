@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 public class BoltReader implements DataReader {
@@ -90,5 +91,10 @@ public class BoltReader implements DataReader {
     @Override
     public GraphSchema scanSchema(CopyOptions copyOptions) {
         return new BoltSchemaScanner(driver, databaseName).scan(copyOptions);
+    }
+
+    @Override
+    public List<String> readIndexAndConstraintDdl() {
+        return new BoltSchemaDdlReader(driver, databaseName).readDdl();
     }
 }

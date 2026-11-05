@@ -7,6 +7,8 @@ import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Relationship;
 import reactor.core.publisher.Flux;
 
+import java.util.List;
+
 public interface DataReader extends AutoCloseable {
 
     Flux<Node> readNodes();
@@ -32,6 +34,15 @@ public interface DataReader extends AutoCloseable {
     default GraphSchema scanSchema(CopyOptions copyOptions) {
         throw new IllegalArgumentException(
                 "A parquet target requires a bolt/neo4j or parquet source.");
+    }
+
+    /**
+     * Returns the CREATE statements reproducing the source database's constraints and indexes.
+     * Required by the --copy-indexes option.
+     */
+    default List<String> readIndexAndConstraintDdl() {
+        throw new IllegalArgumentException(
+                "--copy-indexes is only valid when the source address uses a bolt/neo4j scheme.");
     }
 
     @Override

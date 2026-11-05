@@ -136,6 +136,17 @@ public class BoltWriter implements DataWriter {
     }
 
     @Override
+    public void applyIndexAndConstraintDdl(List<String> ddlStatements) {
+        try (var session = targetDriver.session(SessionConfig.forDatabase(targetDatabase))) {
+            for (String ddl : ddlStatements) {
+                LOG.info("Creating index/constraint on target: {}", ddl);
+                session.run(ddl).consume();
+            }
+        }
+        LOG.info("Indexes and constraints created without WAIT: they may still be populating in the background");
+    }
+
+    @Override
     public void close() {
         targetDriver.close();
     }
