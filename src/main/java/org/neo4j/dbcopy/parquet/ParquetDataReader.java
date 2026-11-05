@@ -135,11 +135,15 @@ public final class ParquetDataReader implements DataReader {
         return Flux.using(
                         () -> OpenFile.open(file),
                         open -> Flux.<T>generate(sink -> {
-                            if (open.rows().hasNext()) {
-                                open.rows().next();
-                                sink.next(mapper.apply(open.rows(), open.footer()));
-                            } else {
-                                sink.complete();
+                            try {
+                                if (open.rows().hasNext()) {
+                                    open.rows().next();
+                                    sink.next(mapper.apply(open.rows(), open.footer()));
+                                } else {
+                                    sink.complete();
+                                }
+                            } catch (IOException e) {
+                                throw new UncheckedIOException("Unable to read parquet file " + open.file(), e);
                             }
                         }),
                         OpenFile::close)
@@ -171,7 +175,7 @@ public final class ParquetDataReader implements DataReader {
         return properties;
     }
 
-    private record OpenFile(ParquetFileReader reader, RowReader rows, ParquetFooter footer) {
+    private record OpenFile(Path file, ParquetFileReader reader, RowReader rows, ParquetFooter footer) {
 
         static OpenFile open(Path file) {
             ParquetFileReader reader = null;
@@ -179,7 +183,7 @@ public final class ParquetDataReader implements DataReader {
                 reader = ParquetFileReader.open(InputFile.of(file));
                 ParquetFooter footer = ParquetFooter.fromKeyValueMetadata(
                         reader.getFileMetaData().keyValueMetadata(), file);
-                return new OpenFile(reader, reader.rowReader(), footer);
+                return new OpenFile(file, reader, reader.rowReader(), footer);
             } catch (IOException e) {
                 closeQuietly(reader);
                 throw new UncheckedIOException("Unable to read parquet file " + file, e);
@@ -192,6 +196,8 @@ public final class ParquetDataReader implements DataReader {
         void close() {
             try {
                 rows.close();
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to close parquet file " + file, e);
             } finally {
                 closeQuietly(reader);
             }
